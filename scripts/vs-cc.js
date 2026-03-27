@@ -433,10 +433,7 @@
       this.checkboxes.forEach((cb, cat) => {
         const val = !!this.store.consents[cat];
         if (cb.checked !== val) {
-          cb.checked = val;
-          // Trigger Webflow's visual checkbox state
-          if (val) cb.classList.add("w--redirected-checked");
-          else cb.classList.remove("w--redirected-checked");
+          cb.click();
         }
       });
     }
