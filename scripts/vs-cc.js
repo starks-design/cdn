@@ -540,7 +540,7 @@
           this.updateConsents(ALL_GRANTED, "allow");
           this.banner.updateCheckboxes();
           this.preferences.updateCheckboxes();
-          setTimeout(() => this.closeAll(), 400);
+          this.closeAll();
         }
         // Deny all
         else if (target.closest(SEL.deny)) {
