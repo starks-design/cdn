@@ -545,6 +545,15 @@
           this.preferences.updateCheckboxes();
           this.preferences.show();
         }
+        // Submit preferences
+        else if (target.closest(SEL.submit)) {
+          e.preventDefault();
+          const comp = this.preferences.element ? this.preferences : this.manager;
+          const consents = { essential: true };
+          comp.checkboxes.forEach((cb, cat) => { consents[cat] = cb.checked; });
+          this.updateConsents(consents, "submit");
+          this.closeAll();
+        }
         // Close
         else if (target.closest(SEL.close)) {
           this.handleClose();
