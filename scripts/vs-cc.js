@@ -536,16 +536,19 @@
 
         // Allow all
         if (target.closest(SEL.allow)) {
+          e.preventDefault();
           this.updateConsents(ALL_GRANTED, "allow");
           this.closeAll();
         }
         // Deny all
         else if (target.closest(SEL.deny)) {
+          e.preventDefault();
           this.updateConsents(OPT_IN_DEFAULTS, "deny");
           this.closeAll();
         }
         // Open preferences
         else if (target.closest(SEL.openPrefs)) {
+          e.preventDefault();
           this.banner.hide();
           this.manager.hide();
           this.preferences.updateCheckboxes();
