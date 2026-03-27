@@ -538,6 +538,8 @@
         if (target.closest(SEL.allow)) {
           e.preventDefault();
           this.updateConsents(ALL_GRANTED, "allow");
+          this.banner.updateCheckboxes();
+          this.preferences.updateCheckboxes();
           this.closeAll();
         }
         // Deny all
