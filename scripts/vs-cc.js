@@ -423,7 +423,7 @@
     }
 
     hide() {
-      if (!this.element || !this.visible) return;
+      if (!this.element) return;
       fadeOut(this.element);
       if (this.scrollLock) unlockScroll();
       this.visible = false;
@@ -600,7 +600,9 @@
     closeAll() {
       this.banner.hide();
       this.preferences.hide();
-      this.manager.onReady(() => this.manager.show());
+      if (this.manager.element) {
+        this.manager.onReady(() => this.manager.show());
+      }
     }
 
     updateConsents(newConsents, action) {
