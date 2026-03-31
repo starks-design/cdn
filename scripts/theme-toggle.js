@@ -6,16 +6,20 @@
  * Original: https://cdn.jsdelivr.net/gh/lumosframework/scripts@v1.1.1/theme-toggle.js
  * CDN:      https://cdn.jsdelivr.net/gh/starks-design/cdn@main/scripts/theme-toggle.js
  *
- * Einbindung:
- *   <script data-theme-toggle-script duration="0.5" ease="power1.out"
- *     src="https://cdn.jsdelivr.net/gh/starks-design/cdn@main/scripts/theme-toggle.js"></script>
+ * Supports:
+ *   - Single toggle: <button data-theme-toggle-button>
+ *   - Explicit buttons: <button data-theme-toggle-button="light">
+ *                        <button data-theme-toggle-button="dark">
  *
  * Changelog:
- *   v1.1.1-starks (2026-03-31): Initial fork from Lumos v1.1.1
+ *   v1.1.1-starks (2026-03-31):
+ *     - Support for explicit light/dark button values
+ *     - localStorage persistence
+ *     - prefers-color-scheme fallback
  */
 function colorModeToggle() {
   function attr(defaultVal, attrVal) {
-    const defaultValType = typeof defaultVal;
+    var defaultValType = typeof defaultVal;
     if (typeof attrVal !== "string" || attrVal.trim() === "") return defaultVal;
     if (attrVal === "true" && defaultValType === "boolean") return true;
     if (attrVal === "false" && defaultValType === "boolean") return false;
@@ -24,28 +28,23 @@ function colorModeToggle() {
     return defaultVal;
   }
 
-  const htmlElement = document.documentElement;
-  let toggleEl;
-  let togglePressed = "false";
+  var htmlElement = document.documentElement;
 
-  const scriptTag = document.querySelector("[data-theme-toggle-script]");
+  var scriptTag = document.querySelector("[data-theme-toggle-script]");
   if (!scriptTag) {
-    console.warn(
-      "Script tag with data-theme-toggle-script attribute not found"
-    );
+    console.warn("Script tag with data-theme-toggle-script attribute not found");
     return;
   }
 
-  let colorModeDuration = attr(0.5, scriptTag.getAttribute("duration"));
-  let colorModeEase = attr("power1.out", scriptTag.getAttribute("ease"));
+  var colorModeDuration = attr(0.5, scriptTag.getAttribute("duration"));
+  var colorModeEase = attr("power1.out", scriptTag.getAttribute("ease"));
 
   function setColors(themeString, animate) {
-    if (typeof gsap !== "undefined" && animate) {
-      gsap.to(htmlElement, {
-        ...colorThemes.getTheme(themeString),
+    if (typeof gsap !== "undefined" && typeof colorThemes !== "undefined" && animate) {
+      gsap.to(htmlElement, Object.assign({}, colorThemes.getTheme(themeString), {
         duration: colorModeDuration,
-        ease: colorModeEase,
-      });
+        ease: colorModeEase
+      }));
     } else {
       htmlElement.classList.remove("u-theme-dark");
       htmlElement.classList.remove("u-theme-light");
@@ -58,47 +57,63 @@ function colorModeToggle() {
       localStorage.setItem("dark-mode", "true");
       htmlElement.classList.add("dark-mode");
       setColors("dark", animate);
-      togglePressed = "true";
     } else {
       localStorage.setItem("dark-mode", "false");
       htmlElement.classList.remove("dark-mode");
       setColors("light", animate);
-      togglePressed = "false";
     }
-    if (typeof toggleEl !== "undefined") {
-      toggleEl.forEach(function (element) {
-        element.setAttribute("aria-pressed", togglePressed);
-      });
-    }
+
+    // Update aria-pressed on all toggle buttons
+    var buttons = document.querySelectorAll("[data-theme-toggle-button]");
+    buttons.forEach(function (el) {
+      var val = el.getAttribute("data-theme-toggle-button");
+      if (val === "dark") {
+        el.setAttribute("aria-pressed", dark ? "true" : "false");
+      } else if (val === "light") {
+        el.setAttribute("aria-pressed", dark ? "false" : "true");
+      } else {
+        el.setAttribute("aria-pressed", dark ? "true" : "false");
+      }
+    });
   }
 
-  function checkPreference(e) {
+  // System preference
+  var colorPreference = window.matchMedia("(prefers-color-scheme: dark)");
+  colorPreference.addEventListener("change", function (e) {
     goDark(e.matches, false);
-  }
-  const colorPreference = window.matchMedia("(prefers-color-scheme: dark)");
-  colorPreference.addEventListener("change", (e) => {
-    checkPreference(e);
   });
 
-  let storagePreference = localStorage.getItem("dark-mode");
+  // Init: localStorage > system preference
+  var storagePreference = localStorage.getItem("dark-mode");
   if (storagePreference !== null) {
-    storagePreference === "true" ? goDark(true, false) : goDark(false, false);
+    goDark(storagePreference === "true", false);
   } else {
-    checkPreference(colorPreference);
+    goDark(colorPreference.matches, false);
   }
 
-  window.addEventListener("DOMContentLoaded", (event) => {
-    toggleEl = document.querySelectorAll("[data-theme-toggle-button]");
-    toggleEl.forEach(function (element) {
-      element.setAttribute("aria-label", "View Dark Mode");
-      element.setAttribute("role", "button");
-      element.setAttribute("aria-pressed", togglePressed);
+  // Bind click handlers after DOM ready
+  window.addEventListener("DOMContentLoaded", function () {
+    var buttons = document.querySelectorAll("[data-theme-toggle-button]");
+
+    buttons.forEach(function (el) {
+      el.setAttribute("role", "button");
     });
+
     document.addEventListener("click", function (e) {
-      const targetElement = e.target.closest("[data-theme-toggle-button]");
-      if (targetElement) {
-        let darkClass = htmlElement.classList.contains("dark-mode");
-        darkClass ? goDark(false, true) : goDark(true, true);
+      var btn = e.target.closest("[data-theme-toggle-button]");
+      if (!btn) return;
+
+      var val = btn.getAttribute("data-theme-toggle-button");
+
+      if (val === "dark") {
+        // Explicit dark button → go dark
+        goDark(true, true);
+      } else if (val === "light") {
+        // Explicit light button → go light
+        goDark(false, true);
+      } else {
+        // No value → classic toggle
+        goDark(!htmlElement.classList.contains("dark-mode"), true);
       }
     });
   });
