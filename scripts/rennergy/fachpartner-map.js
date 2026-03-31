@@ -40,12 +40,8 @@
 
   // ─── Constants ────────────────────────────────────────────────────────────────
 
-  // Token wird per data-Attribut am Script-Tag uebergeben:
-  // <script data-mapbox-token="pk.xxx" src="...fachpartner-map.js"></script>
-  var MAPBOX_TOKEN = (function() {
-    var el = document.querySelector('script[data-mapbox-token]');
-    return el ? el.getAttribute('data-mapbox-token') : '';
-  })();
+  var MAPBOX_TOKEN =
+    "pk.eyJ1IjoiYnlzdGFyayIsImEiOiJjbHc2amJna2IwMWNiMm5vOW9nM3AxYWg1In0.mzRxy5Sib2iJKeJh7XHmZg";
 
   var STYLE_LIGHT = "mapbox://styles/bystark/cmicxkh5l00gn01pf7awy8xnv";
   var STYLE_DARK  = "mapbox://styles/bystark/cmicwtx2s00hx01s91mesh22d";
