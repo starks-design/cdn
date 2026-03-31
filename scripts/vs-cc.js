@@ -566,6 +566,13 @@
         else if (target.closest(SEL.close)) {
           this.handleClose();
         }
+        // Manager click → open preferences
+        else if (target.closest(SEL.manager)) {
+          e.preventDefault();
+          this.manager.hide();
+          this.preferences.updateCheckboxes();
+          this.preferences.show();
+        }
       };
 
       document.addEventListener("click", handler);
