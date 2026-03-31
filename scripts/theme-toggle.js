@@ -47,10 +47,15 @@ function colorModeToggle() {
           duration: colorModeDuration,
           ease: colorModeEase,
           onComplete: function () {
-            // Klasse am Ende der Animation setzen (sauberer Endzustand)
+            // Klassen am Ende der Animation setzen (sauberer Endzustand)
             htmlElement.classList.remove("u-theme-dark");
             htmlElement.classList.remove("u-theme-light");
             htmlElement.classList.add("u-theme-" + themeString);
+            if (themeString === "dark") {
+              htmlElement.classList.add("dark-mode");
+            } else {
+              htmlElement.classList.remove("dark-mode");
+            }
           }
         }));
       } else {
@@ -67,15 +72,23 @@ function colorModeToggle() {
   }
 
   function goDark(dark, animate) {
-    if (dark) {
-      localStorage.setItem("dark-mode", "true");
-      htmlElement.classList.add("dark-mode");
-      setColors("dark", animate);
-    } else {
-      localStorage.setItem("dark-mode", "false");
-      htmlElement.classList.remove("dark-mode");
-      setColors("light", animate);
+    localStorage.setItem("dark-mode", dark ? "true" : "false");
+
+    // Bei GSAP-Animation: Klasse NICHT vorher setzen, sonst stimmen die
+    // Startwerte nicht und die Animation springt statt zu tweenen.
+    // setColors setzt die Klassen im onComplete.
+    var useGsap = animate && typeof gsap !== "undefined" && typeof colorThemes !== "undefined";
+
+    if (!useGsap) {
+      // Kein GSAP: Klasse sofort setzen
+      if (dark) {
+        htmlElement.classList.add("dark-mode");
+      } else {
+        htmlElement.classList.remove("dark-mode");
+      }
     }
+
+    setColors(dark ? "dark" : "light", animate);
 
     // Update aria-pressed on all toggle buttons
     var buttons = document.querySelectorAll("[data-theme-toggle-button]");
