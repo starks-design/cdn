@@ -41,10 +41,24 @@ function colorModeToggle() {
 
   function setColors(themeString, animate) {
     if (typeof gsap !== "undefined" && typeof colorThemes !== "undefined" && animate) {
-      gsap.to(htmlElement, Object.assign({}, colorThemes.getTheme(themeString), {
-        duration: colorModeDuration,
-        ease: colorModeEase
-      }));
+      var themeData = colorThemes.getTheme(themeString);
+      if (themeData && Object.keys(themeData).length) {
+        gsap.to(htmlElement, Object.assign({}, themeData, {
+          duration: colorModeDuration,
+          ease: colorModeEase,
+          onComplete: function () {
+            // Klasse am Ende der Animation setzen (sauberer Endzustand)
+            htmlElement.classList.remove("u-theme-dark");
+            htmlElement.classList.remove("u-theme-light");
+            htmlElement.classList.add("u-theme-" + themeString);
+          }
+        }));
+      } else {
+        // colorThemes hat keine Daten — direkt setzen
+        htmlElement.classList.remove("u-theme-dark");
+        htmlElement.classList.remove("u-theme-light");
+        htmlElement.classList.add("u-theme-" + themeString);
+      }
     } else {
       htmlElement.classList.remove("u-theme-dark");
       htmlElement.classList.remove("u-theme-light");
