@@ -1,17 +1,15 @@
 /**
- * Theme Persist 1.0.0-starks
+ * Theme Persist 1.1.0-starks
  * Speichert Dark/Light Mode in localStorage.
- * Der Toggle selbst laeuft nativ ueber Webflow/Lumos.
- * Dieses Script sorgt nur dafuer, dass die Wahl beim Reload erhalten bleibt.
+ * Der Toggle selbst laeuft nativ ueber Webflow/Lumos Interactions.
+ * Dieses Script sorgt dafuer, dass die Wahl beim Reload erhalten bleibt.
  *
  * CDN: https://cdn.jsdelivr.net/gh/starks-design/cdn@main/scripts/theme-persist.js
  *
- * Einbindung im <head>:
- *   <script src="https://cdn.jsdelivr.net/gh/starks-design/cdn@main/scripts/theme-persist.js"></script>
- *
- * Erwartet:
- *   - Toggle-Buttons mit data-theme-toggle-button Attribut (light/dark/leer)
- *   - Klasse "dark-mode" oder "u-theme-dark" auf <html> oder <body>
+ * Changelog:
+ *   v1.1.0 (2026-03-31): Setzt auch data-theme-status auf body + html,
+ *     damit Webflow IX2 den korrekten Startzustand liest.
+ *   v1.0.0 (2026-03-31): Initial release.
  */
 (function () {
   var html = document.documentElement;
@@ -21,9 +19,31 @@
   var saved = localStorage.getItem(KEY);
   if (saved === "true") {
     html.classList.add("dark-mode", "u-theme-dark");
+    html.setAttribute("data-theme-status", "dark");
+  } else if (saved === "false") {
+    html.classList.remove("dark-mode", "u-theme-dark");
+    html.setAttribute("data-theme-status", "light");
   }
 
-  // 2. Bei Klick auf Toggle: neuen Zustand speichern
+  // 2. Sobald Body existiert: data-theme-status auch dort setzen
+  //    (Webflow IX2 liest es vom body)
+  function syncBody() {
+    if (!document.body) return;
+    var isDark = saved === "true";
+    document.body.setAttribute("data-theme-status", isDark ? "dark" : "light");
+    if (isDark) {
+      document.body.classList.add("dark-mode", "u-theme-dark");
+    }
+  }
+
+  // Body kann noch nicht existieren (Script ist im Head)
+  if (document.body) {
+    syncBody();
+  } else {
+    document.addEventListener("DOMContentLoaded", syncBody);
+  }
+
+  // 3. Bei Klick auf Toggle: neuen Zustand speichern
   document.addEventListener("click", function (e) {
     var btn = e.target.closest("[data-theme-toggle-button]");
     if (!btn) return;
