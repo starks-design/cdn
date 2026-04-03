@@ -7,7 +7,10 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.1.3
+ * Version: 2.1.4
+ *
+ * Changelog v2.1.4 (2026-04-03):
+ *   - Search-Reset Button nur sichtbar wenn Text im Suchfeld steht
  *
  * Changelog v2.1.3 (2026-03-31):
  *   - Suggest hover fix: is--hover → is-hover (matching Webflow CSS class)
@@ -1209,6 +1212,7 @@
           setSearchNoneVisible(false);
           setActiveCard(null);
           if (searchInput) searchInput.value = "";
+          if (searchResetBtn) searchResetBtn.style.display = "none";
           currentQuery = "";
           currentRadiusKm = parseRadiusKm();
           setFilterByQuery("", { noSuggest: true });
@@ -1216,10 +1220,12 @@
       }
 
       if (searchResetBtn) {
+        searchResetBtn.style.display = "none";
         searchResetBtn.addEventListener("click", function (e) {
           e.preventDefault();
           if (searchInput) searchInput.value = "";
           currentQuery = "";
+          searchResetBtn.style.display = "none";
           setFilterByQuery("", { noSuggest: true });
         });
       }
@@ -1245,7 +1251,12 @@
         setFilterByQuery(searchInput.value || "");
       }, SEARCH_DEBOUNCE_MS);
 
-      searchInput.addEventListener("input", debouncedFilter);
+      searchInput.addEventListener("input", function () {
+        if (searchResetBtn) {
+          searchResetBtn.style.display = searchInput.value.trim() ? "" : "none";
+        }
+        debouncedFilter();
+      });
 
       document.addEventListener("mousedown", function (e) {
         if (!suggestState.open) return;
