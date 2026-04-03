@@ -1336,8 +1336,13 @@
         target.dataset._bound = "1";
 
         target.addEventListener("click", function (e) {
-          // Let modal triggers through
-          if (e.target.closest("[data-modal-trigger]")) return;
+          // Check if click is inside a modal-trigger area.
+          // Walk up from e.target to the zoom-target boundary.
+          var node = e.target;
+          while (node && node !== target) {
+            if (node.hasAttribute && node.hasAttribute("data-modal-trigger")) return;
+            node = node.parentElement;
+          }
 
           e.preventDefault();
           e.stopPropagation();
