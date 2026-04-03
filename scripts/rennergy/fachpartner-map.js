@@ -1336,9 +1336,8 @@
         target.dataset._bound = "1";
 
         target.addEventListener("click", function (e) {
-          // Let modal triggers and links through
-          var clicked = e.target.closest("[data-modal-trigger], a, button");
-          if (clicked && !clicked.classList.contains("zoom-target")) return;
+          // Let modal triggers through
+          if (e.target.closest("[data-modal-trigger]")) return;
 
           e.preventDefault();
           e.stopPropagation();
