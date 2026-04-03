@@ -503,9 +503,9 @@
       var leftExtra = zoomWidth ? zoomWidth + gutter * 2 : gutter;
 
       // The map is fullscreen but markers should stay within the
-      // Lumos container area (9 columns left of the 3-column sidebar).
+      // Lumos container area left of the sidebar (4 columns wide).
       // containerMargin = space from viewport edge to container start.
-      // sidebarWidth = the .search_results_wrapper width.
+      // sidebarWidth = the .search_results_wrapper width (read live).
       // We add gutter between content area and sidebar.
       var pad = {
         top:    navHeight + 40,
@@ -523,7 +523,7 @@
     function computeOffset() {
       var sidebar = getScrollWrapper();
       if (isHorizontalLayout()) {
-        var w = (sidebar && sidebar.offsetWidth) || 420;
+        var w = (sidebar && sidebar.offsetWidth) || 520;
         return [-(Math.round(w / 2) + 24), 0];
       }
       var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
