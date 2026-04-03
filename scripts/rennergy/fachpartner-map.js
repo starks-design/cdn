@@ -521,10 +521,16 @@
     }
 
     function computeOffset() {
-      var sidebar = getScrollWrapper();
       if (isHorizontalLayout()) {
-        var w = (sidebar && sidebar.offsetWidth) || 520;
-        return [-(Math.round(w / 2) + 24), 0];
+        // Dynamisch: Mitte des freien Kartenbereichs berechnen
+        var sidebar = getScrollWrapper();
+        var sidebarW = (sidebar && sidebar.offsetWidth) || 0;
+        var mapContainer = qs("#" + SEL.mapContainer);
+        var mapW = (mapContainer && mapContainer.offsetWidth) || window.innerWidth;
+        // Freier Bereich = Kartenbreite - Sidebar, Offset = halbe Sidebar
+        var freeCenter = (mapW - sidebarW) / 2;
+        var mapCenter = mapW / 2;
+        return [Math.round(freeCenter - mapCenter), 0];
       }
       var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
       return [0, -Math.round(vh * 0.25)];
