@@ -7,7 +7,15 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.1.3
+ * Version: 2.2.0
+ *
+ * Changelog v2.2.0 (2026-04-03):
+ *   - Mobile Bottom Sheet: Google-Maps-artiges Verhalten ab Tablet-Breakpoint.
+ *     .modal-group wird per Touch-Drag hoch/runtergeschoben.
+ *     3 Snap-States: collapsed (nur Grabber), peek (40%), expanded (85%).
+ *     Marker-Tap / Suche oeffnet Sheet auf peek. Grabber-Drag zum Schliessen.
+ *     Map bleibt klickbar im collapsed-State. computeOffset/computePadding
+ *     passen sich an den Sheet-State an.
  *
  * Changelog v2.1.3 (2026-03-31):
  *   - Suggest hover fix: is--hover → is-hover (matching Webflow CSS class)
@@ -83,6 +91,15 @@
   var SUGGEST_DEBOUNCE_MS = 160;
   var DOM_CHANGE_DELAY_MS = 450;
 
+  // ─── Bottom Sheet (mobile/tablet) ───────────────────────────────────────────
+  // Snap positions as fraction of viewport height (0 = top, 1 = bottom)
+  var SHEET_SNAP_COLLAPSED = 0.92; // only grabber visible near bottom
+  var SHEET_SNAP_PEEK      = 0.55; // ~45% visible
+  var SHEET_SNAP_EXPANDED  = 0.12; // ~88% visible
+  var SHEET_DRAG_THRESHOLD = 40;   // px minimum drag to trigger snap change
+  var SHEET_VELOCITY_THRESHOLD = 0.4; // px/ms — fast swipe snaps further
+  var SHEET_TRANSITION     = "transform 0.35s cubic-bezier(0.32, 0.72, 0, 1)";
+
   // ─── Map Bubble Colors ──────────────────────────────────────────────────────
   var MAP_VARS = {
     bubble:      ["--_theme---b-50",       "#9B1B85"],
@@ -118,7 +135,11 @@
     suggestList:     '[data-suggest="list"]',
     suggestTemplate: '[data-suggest="template"]',
     suggestText:     '[data-suggest="text"]',
-    itemLink:        'a[fs-list-element="item-link"]'
+    itemLink:        'a[fs-list-element="item-link"]',
+    // Bottom Sheet
+    modalGroup:      ".modal-group",
+    mobileGrabber:   ".mobile_grabber",
+    modal:           ".modal"
   };
 
 
@@ -395,6 +416,38 @@
     });
 
 
+    // ─── Bottom Sheet state (initialized early, setup later) ──────────────────
+
+    var sheet = {
+      el: null,           // .modal-group element
+      modalEl: null,      // .modal element
+      grabberEl: null,    // .mobile_grabber element
+      state: "peek",      // "collapsed" | "peek" | "expanded"
+      active: false,      // is bottom sheet mode active?
+      dragging: false,
+      startY: 0,
+      startTranslate: 0,
+      currentTranslate: 0,
+      lastY: 0,
+      lastTime: 0
+    };
+
+    function isSheetLayout() {
+      return !isHorizontalLayout();
+    }
+
+    function getViewportHeight() {
+      return (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+    }
+
+    function getSnapForState(state) {
+      switch (state) {
+        case "collapsed": return SHEET_SNAP_COLLAPSED;
+        case "expanded":  return SHEET_SNAP_EXPANDED;
+        default:          return SHEET_SNAP_PEEK;
+      }
+    }
+
     // ─── DOM Helpers ────────────────────────────────────────────────────────────
 
     function getScrollWrapper() {
@@ -454,7 +507,16 @@
      * so it adapts to any viewport width.
      */
     function computePadding() {
-      if (!isHorizontalLayout()) return PAD_TABLET;
+      if (!isHorizontalLayout()) {
+        if (sheet.active) {
+          var vh = getViewportHeight();
+          var snapFrac = getSnapForState(sheet.state);
+          var sheetTop = Math.round(vh * snapFrac);
+          // Markers should stay above the sheet
+          return { top: 90, right: 48, bottom: Math.max(90, vh - sheetTop + 24), left: 48 };
+        }
+        return PAD_TABLET;
+      }
 
       var sidebar = getScrollWrapper();
       var sidebarWidth = (sidebar && sidebar.offsetWidth) || 0;
@@ -523,7 +585,15 @@
         var w = (sidebar && sidebar.offsetWidth) || 420;
         return [-(Math.round(w / 2) + 24), 0];
       }
-      var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+      var vh = getViewportHeight();
+      // When bottom sheet is active, shift map center based on sheet state
+      if (sheet.active) {
+        var snapFrac = getSnapForState(sheet.state);
+        // Sheet covers (1 - snapFrac) of viewport from bottom
+        // Shift markers upward by half the covered area
+        var coveredPx = vh * (1 - snapFrac);
+        return [0, -Math.round(coveredPx / 2)];
+      }
       return [0, -Math.round(vh * 0.25)];
     }
 
@@ -821,6 +891,9 @@
 
       var el = partnerElByIndex.get(cardIndex);
       if (el) { setActiveCard(el); scrollCardToCenter(el); }
+
+      // Open bottom sheet if collapsed so user sees the selected partner
+      sheetEnsurePeek();
 
       requestAnimationFrame(function () { flyToWithSidebar(lng, lat, zoom); });
     }
@@ -1254,6 +1327,10 @@
         if (!insideInput && !insidePanel) hideSuggestions();
       });
 
+      searchInput.addEventListener("focus", function () {
+        sheetEnsurePeek();
+      });
+
       searchInput.addEventListener("blur", function () {
         setTimeout(function () {
           if (document.activeElement === searchInput) return;
@@ -1421,6 +1498,250 @@
     }
 
 
+    // ─── Bottom Sheet ─────────────────────────────────────────────────────────
+
+    function snapPositionPx(snapFraction) {
+      return Math.round(getViewportHeight() * snapFraction);
+    }
+
+    function setSheetPosition(translateY, animate) {
+      if (!sheet.el) return;
+      if (animate) {
+        sheet.el.style.transition = SHEET_TRANSITION;
+      } else {
+        sheet.el.style.transition = "none";
+      }
+      sheet.el.style.transform = "translateY(" + translateY + "px)";
+      sheet.currentTranslate = translateY;
+    }
+
+    function setSheetState(newState, animate) {
+      if (!sheet.active) return;
+      sheet.state = newState;
+      var y = snapPositionPx(getSnapForState(newState));
+      setSheetPosition(y, animate !== false);
+
+      // Toggle pointer-events on map when sheet is expanded
+      var mapCanvas = map.getCanvas();
+      if (mapCanvas) {
+        mapCanvas.style.pointerEvents = (newState === "expanded") ? "none" : "";
+      }
+
+      // Toggle overflow scroll on results wrapper when expanded
+      var scrollW = getScrollWrapper();
+      if (scrollW) {
+        scrollW.style.overflowY = (newState === "collapsed") ? "hidden" : "auto";
+      }
+    }
+
+    /** Snap to nearest position based on current translateY and velocity */
+    function snapSheet(velocity) {
+      var y = sheet.currentTranslate;
+      var vh = getViewportHeight();
+
+      var collapsedY = snapPositionPx(SHEET_SNAP_COLLAPSED);
+      var peekY      = snapPositionPx(SHEET_SNAP_PEEK);
+      var expandedY  = snapPositionPx(SHEET_SNAP_EXPANDED);
+
+      // Fast swipe: velocity > threshold
+      if (Math.abs(velocity) > SHEET_VELOCITY_THRESHOLD) {
+        if (velocity < 0) {
+          // Swiping UP — go to next higher state
+          if (sheet.state === "collapsed") { setSheetState("peek"); return; }
+          if (sheet.state === "peek")      { setSheetState("expanded"); return; }
+          setSheetState("expanded"); return;
+        } else {
+          // Swiping DOWN — go to next lower state
+          if (sheet.state === "expanded") { setSheetState("peek"); return; }
+          if (sheet.state === "peek")     { setSheetState("collapsed"); return; }
+          setSheetState("collapsed"); return;
+        }
+      }
+
+      // Slow drag: snap to nearest
+      var dCollapsed = Math.abs(y - collapsedY);
+      var dPeek      = Math.abs(y - peekY);
+      var dExpanded  = Math.abs(y - expandedY);
+
+      if (dCollapsed <= dPeek && dCollapsed <= dExpanded) {
+        setSheetState("collapsed");
+      } else if (dExpanded <= dPeek) {
+        setSheetState("expanded");
+      } else {
+        setSheetState("peek");
+      }
+    }
+
+    function onSheetTouchStart(e) {
+      if (!sheet.active) return;
+      sheet.dragging = true;
+      sheet.startY = e.touches[0].clientY;
+      sheet.startTranslate = sheet.currentTranslate;
+      sheet.lastY = sheet.startY;
+      sheet.lastTime = Date.now();
+      sheet.el.style.transition = "none";
+    }
+
+    function onSheetTouchMove(e) {
+      if (!sheet.dragging) return;
+      var touchY = e.touches[0].clientY;
+      var delta = touchY - sheet.startY;
+      var newY = sheet.startTranslate + delta;
+
+      // Clamp: don't go above expanded or below collapsed
+      var minY = snapPositionPx(SHEET_SNAP_EXPANDED) - 40;
+      var maxY = snapPositionPx(SHEET_SNAP_COLLAPSED) + 20;
+      newY = Math.max(minY, Math.min(maxY, newY));
+
+      sheet.el.style.transform = "translateY(" + newY + "px)";
+      sheet.currentTranslate = newY;
+
+      sheet.lastY = touchY;
+      sheet.lastTime = Date.now();
+
+      e.preventDefault();
+    }
+
+    function onSheetTouchEnd(e) {
+      if (!sheet.dragging) return;
+      sheet.dragging = false;
+
+      var now = Date.now();
+      var dt = now - sheet.lastTime;
+      var dy = sheet.currentTranslate - sheet.startTranslate;
+
+      // Calculate velocity (px/ms)
+      var velocity = dt > 0 ? dy / dt : 0;
+
+      // Check if drag was large enough
+      if (Math.abs(dy) < SHEET_DRAG_THRESHOLD && Math.abs(velocity) < SHEET_VELOCITY_THRESHOLD) {
+        // Snap back to current state
+        setSheetState(sheet.state, true);
+        return;
+      }
+
+      snapSheet(velocity);
+    }
+
+    function setupBottomSheet() {
+      sheet.modalEl = qs(SEL.modal);
+      sheet.el = qs(SEL.modalGroup);
+      sheet.grabberEl = qs(SEL.mobileGrabber);
+
+      if (!sheet.el || !sheet.grabberEl) return;
+
+      // Touch events on the grabber
+      sheet.grabberEl.addEventListener("touchstart", onSheetTouchStart, { passive: true });
+      sheet.grabberEl.addEventListener("touchmove", onSheetTouchMove, { passive: false });
+      sheet.grabberEl.addEventListener("touchend", onSheetTouchEnd, { passive: true });
+
+      // Also allow dragging from the top edge of search_results_wrapper
+      // when the list is scrolled to the top
+      var scrollW = getScrollWrapper();
+      if (scrollW) {
+        scrollW.addEventListener("touchstart", function (e) {
+          if (!sheet.active) return;
+          // Only hijack if scrolled to top
+          if (scrollW.scrollTop <= 0) {
+            onSheetTouchStart(e);
+          }
+        }, { passive: true });
+
+        scrollW.addEventListener("touchmove", function (e) {
+          if (!sheet.dragging) return;
+          // If scroll is at top and dragging down, handle as sheet drag
+          if (scrollW.scrollTop <= 0) {
+            onSheetTouchMove(e);
+          } else {
+            // User is scrolling content — cancel sheet drag
+            sheet.dragging = false;
+          }
+        }, { passive: false });
+
+        scrollW.addEventListener("touchend", function (e) {
+          if (sheet.dragging) onSheetTouchEnd(e);
+        }, { passive: true });
+      }
+
+      // Inject bottom sheet CSS
+      var style = document.createElement("style");
+      style.textContent =
+        "@media (max-width: " + HORIZONTAL_MIN_WIDTH + "px) {" +
+        "  .modal-group {" +
+        "    position: fixed !important;" +
+        "    left: 0 !important;" +
+        "    right: 0 !important;" +
+        "    bottom: 0 !important;" +
+        "    top: 0 !important;" +
+        "    z-index: 100;" +
+        "    will-change: transform;" +
+        "    display: flex;" +
+        "    flex-direction: column;" +
+        "    border-radius: 16px 16px 0 0;" +
+        "    overflow: hidden;" +
+        "    background: var(--_theme---background, #fff);" +
+        "    box-shadow: 0 -4px 24px rgba(0,0,0,0.12);" +
+        "  }" +
+        "  .mobile_grabber {" +
+        "    display: flex !important;" +
+        "    align-items: center;" +
+        "    justify-content: center;" +
+        "    padding: 10px 0 6px;" +
+        "    cursor: grab;" +
+        "    touch-action: none;" +
+        "    flex-shrink: 0;" +
+        "  }" +
+        "  .mobile_grabber_visual {" +
+        "    width: 36px;" +
+        "    height: 4px;" +
+        "    border-radius: 2px;" +
+        "    background: var(--_theme---neutral-40, #ccc);" +
+        "  }" +
+        "  .search_results_wrapper {" +
+        "    flex: 1;" +
+        "    overflow-y: auto;" +
+        "    -webkit-overflow-scrolling: touch;" +
+        "  }" +
+        "}";
+      document.head.appendChild(style);
+
+      // Check + activate on resize
+      function checkActivation() {
+        var shouldBeActive = isSheetLayout();
+        if (shouldBeActive && !sheet.active) {
+          sheet.active = true;
+          setSheetState("peek", false);
+        } else if (!shouldBeActive && sheet.active) {
+          sheet.active = false;
+          sheet.el.style.transform = "";
+          sheet.el.style.transition = "";
+          var mapCanvas = map.getCanvas();
+          if (mapCanvas) mapCanvas.style.pointerEvents = "";
+        }
+      }
+
+      window.addEventListener("resize", debounce(checkActivation, 150));
+
+      // Also recalculate on viewport resize (mobile keyboard, etc.)
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener("resize", debounce(function () {
+          if (sheet.active && !sheet.dragging) {
+            setSheetState(sheet.state, true);
+          }
+        }, 150));
+      }
+
+      checkActivation();
+    }
+
+    /** Public: open sheet to peek if collapsed (called by marker tap, search) */
+    function sheetEnsurePeek() {
+      if (sheet.active && sheet.state === "collapsed") {
+        setSheetState("peek", true);
+      }
+    }
+
+
     // ─── Boot ───────────────────────────────────────────────────────────────────
 
     map.on("load", async function () {
@@ -1428,13 +1749,9 @@
       setupSearchInput();
       setupThemeObserver();
       bindMapEvents();
+      setupBottomSheet();
 
       document.addEventListener("keydown", handleGlobalKeydown);
-
-      var scrollWrapper = getScrollWrapper();
-      if (scrollWrapper) {
-        scrollWrapper.addEventListener("touchmove", function (e) { e.stopPropagation(); }, { passive: true });
-      }
 
       currentRadiusKm = parseRadiusKm();
 
