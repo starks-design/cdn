@@ -1490,9 +1490,8 @@
       // Version badge
       var badge = document.createElement("div");
       badge.textContent = "v2.1.6";
-      badge.style.cssText = "position:absolute;top:8px;right:8px;font-size:10px;opacity:0.4;z-index:10;pointer-events:none;font-family:monospace;";
-      var mapEl = qs("#" + SEL.mapContainer);
-      if (mapEl) mapEl.style.position = "relative", mapEl.appendChild(badge);
+      badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:12px;color:#ff0000;z-index:999999;pointer-events:none;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:3px;";
+      document.body.appendChild(badge);
     });
   });
 })();
