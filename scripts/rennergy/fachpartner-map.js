@@ -7,7 +7,11 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.1.6
+ * Version: 2.1.7
+ *
+ * Changelog v2.1.7 (2026-04-04):
+ *   - ergebnis_nr zeigt nur Zahl (kein "Fachpartner gefunden" Text)
+ *   - Version-Badge: 3x schnell tippen auf Karte zeigt Version
  *
  * Changelog v2.1.6 (2026-04-04):
  *   - Versions-Badge oben rechts im Kartenbereich (nur Dev-Hilfe)
@@ -424,7 +428,7 @@
     function updateResultInfo() {
       if (!resultInfoEl) return;
       resultInfoEl.textContent = !currentQuery
-        ? allGeoData.length + " Fachpartner gefunden"
+        ? String(allGeoData.length)
         : geoData.length + " von " + allGeoData.length;
     }
 
@@ -1487,11 +1491,29 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      // Version badge
-      var badge = document.createElement("div");
-      badge.textContent = "v2.1.6";
-      badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:12px;color:#ff0000;z-index:999999;pointer-events:none;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.7);padding:2px 6px;border-radius:3px;";
-      document.body.appendChild(badge);
+      // Version badge — 3x schnell tippen auf Karte zeigt Version
+      var VERSION = "2.1.7";
+      var tapCount = 0;
+      var tapTimer = null;
+      var mapEl = qs("#" + SEL.mapContainer);
+      if (mapEl) {
+        mapEl.addEventListener("click", function () {
+          tapCount++;
+          clearTimeout(tapTimer);
+          tapTimer = setTimeout(function () { tapCount = 0; }, 800);
+          if (tapCount >= 3) {
+            tapCount = 0;
+            var badge = document.querySelector("#vs-version-badge");
+            if (badge) { badge.remove(); return; }
+            badge = document.createElement("div");
+            badge.id = "vs-version-badge";
+            badge.textContent = "v" + VERSION;
+            badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:14px;color:#ff0000;z-index:999999;pointer-events:none;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.8);padding:4px 8px;border-radius:4px;";
+            document.body.appendChild(badge);
+            setTimeout(function () { if (badge.parentNode) badge.remove(); }, 5000);
+          }
+        });
+      }
     });
   });
 })();
