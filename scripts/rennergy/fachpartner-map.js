@@ -7,7 +7,10 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.1.5
+ * Version: 2.1.6
+ *
+ * Changelog v2.1.6 (2026-04-04):
+ *   - Versions-Badge oben rechts im Kartenbereich (nur Dev-Hilfe)
  *
  * Changelog v2.1.5 (2026-04-04):
  *   - stopPropagation auf zoom-target Click entfernt — blockierte
@@ -1483,6 +1486,13 @@
 
       hideSuggestions();
       setSearchNoneVisible(false);
+
+      // Version badge
+      var badge = document.createElement("div");
+      badge.textContent = "v2.1.6";
+      badge.style.cssText = "position:absolute;top:8px;right:8px;font-size:10px;opacity:0.4;z-index:10;pointer-events:none;font-family:monospace;";
+      var mapEl = qs("#" + SEL.mapContainer);
+      if (mapEl) mapEl.style.position = "relative", mapEl.appendChild(badge);
     });
   });
 })();
