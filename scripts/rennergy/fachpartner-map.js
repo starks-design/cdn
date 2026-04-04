@@ -1341,20 +1341,29 @@
         if (target.dataset._bound === "1") return;
         target.dataset._bound = "1";
 
-        // Bind modal triggers inside this zoom-target directly
-        qsa("[data-modal-trigger]", target).forEach(function (trigger) {
-          if (trigger.dataset._modalBound === "1") return;
-          trigger.dataset._modalBound = "1";
-          trigger.addEventListener("click", function (e) {
+        target.addEventListener("click", function (e) {
+          // Check if click is inside a modal-trigger button area
+          var triggerEl = e.target.closest("[data-modal-trigger]");
+          if (!triggerEl) {
+            // Lumos clickable pattern: the click hits .clickable_btn
+            // which is inside .button_main_wrap[data-modal-trigger]
+            var btn = e.target.closest(".clickable_btn, .clickable_link, .button_main_wrap");
+            if (btn) {
+              var wrap = btn.closest("[data-modal-trigger]") || btn.parentElement && btn.parentElement.closest("[data-modal-trigger]");
+              if (wrap) triggerEl = wrap;
+            }
+          }
+
+          if (triggerEl) {
+            e.preventDefault();
             e.stopPropagation();
-            var modalId = trigger.getAttribute("data-modal-trigger");
+            var modalId = triggerEl.getAttribute("data-modal-trigger");
             if (window.lumos && window.lumos.modal) {
               window.lumos.modal.open(modalId);
             }
-          });
-        });
+            return;
+          }
 
-        target.addEventListener("click", function (e) {
           e.preventDefault();
           e.stopPropagation();
           var cardEl = target.closest(SEL.partnerItem);
