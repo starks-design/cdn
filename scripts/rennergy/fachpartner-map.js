@@ -1356,7 +1356,6 @@
 
         target.addEventListener("click", function (e) {
           e.preventDefault();
-          e.stopPropagation();
           var cardEl = target.closest(SEL.partnerItem);
           if (!cardEl) return;
           var idx = parseInt(cardEl.dataset.cardIndex, 10);
