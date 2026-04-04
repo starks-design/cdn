@@ -1359,16 +1359,12 @@
               var slug = linkEl ? (linkEl.getAttribute("href") || "").split("/").pop() : "";
               var name = slug.replace(/-/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); });
 
-              // Set hidden fields in the modal form (if they exist)
-              var setField = function (sel, val) {
-                var el = document.querySelector(sel);
-                if (el) el.value = val;
-              };
-              setField('[data-partner-field="name"]', name);
-              setField('[data-partner-field="plz"]', plz);
-              setField('[data-partner-field="city"]', city);
-              setField('[data-partner-field="slug"]', slug);
-              setField('[data-partner-field="info"]', name + " – " + plz + " " + city);
+              // Set hidden field in the modal form
+              var info = name + " – " + plz + " " + city;
+              var field = document.querySelector('#input-fachpartner') ||
+                          document.querySelector('[data-partner-field="info"]') ||
+                          document.querySelector('[name="fachpartner"]');
+              if (field) field.value = info;
             }
 
             var modalId = trigger.getAttribute("data-modal-trigger");
