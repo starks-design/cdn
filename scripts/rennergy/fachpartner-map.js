@@ -1347,6 +1347,30 @@
           trigger.dataset._modalBound = "1";
           trigger.addEventListener("click", function (e) {
             e.stopPropagation();
+
+            // Inject partner info into modal hidden fields
+            var cardEl = trigger.closest(SEL.partnerItem);
+            if (cardEl) {
+              var plzEl = cardEl.querySelector(SEL.plzAttr);
+              var cityEl = cardEl.querySelector(SEL.cityAttr);
+              var linkEl = cardEl.querySelector(SEL.itemLink);
+              var plz = plzEl ? (plzEl.getAttribute("modal-partner-plz") || plzEl.textContent || "").trim() : "";
+              var city = cityEl ? (cityEl.getAttribute("modal-partner-city") || cityEl.textContent || "").trim() : "";
+              var slug = linkEl ? (linkEl.getAttribute("href") || "").split("/").pop() : "";
+              var name = slug.replace(/-/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+
+              // Set hidden fields in the modal form (if they exist)
+              var setField = function (sel, val) {
+                var el = document.querySelector(sel);
+                if (el) el.value = val;
+              };
+              setField('[data-partner-field="name"]', name);
+              setField('[data-partner-field="plz"]', plz);
+              setField('[data-partner-field="city"]', city);
+              setField('[data-partner-field="slug"]', slug);
+              setField('[data-partner-field="info"]', name + " – " + plz + " " + city);
+            }
+
             var modalId = trigger.getAttribute("data-modal-trigger");
             if (window.lumos && window.lumos.modal) {
               window.lumos.modal.open(modalId);
