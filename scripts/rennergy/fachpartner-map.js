@@ -1341,15 +1341,20 @@
         if (target.dataset._bound === "1") return;
         target.dataset._bound = "1";
 
-        target.addEventListener("click", function (e) {
-          // Check if click is inside a modal-trigger area.
-          // Walk up from e.target to the zoom-target boundary.
-          var node = e.target;
-          while (node && node !== target) {
-            if (node.hasAttribute && node.hasAttribute("data-modal-trigger")) return;
-            node = node.parentElement;
-          }
+        // Bind modal triggers inside this zoom-target directly
+        qsa("[data-modal-trigger]", target).forEach(function (trigger) {
+          if (trigger.dataset._modalBound === "1") return;
+          trigger.dataset._modalBound = "1";
+          trigger.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var modalId = trigger.getAttribute("data-modal-trigger");
+            if (window.lumos && window.lumos.modal) {
+              window.lumos.modal.open(modalId);
+            }
+          });
+        });
 
+        target.addEventListener("click", function (e) {
           e.preventDefault();
           e.stopPropagation();
           var cardEl = target.closest(SEL.partnerItem);
