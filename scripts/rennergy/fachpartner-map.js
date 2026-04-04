@@ -1347,37 +1347,10 @@
           trigger.dataset._modalBound = "1";
           trigger.addEventListener("click", function (e) {
             e.stopPropagation();
-
-            // Inject partner info into modal hidden fields
-            try {
-              var cardEl = trigger.closest(SEL.partnerItem);
-              if (cardEl) {
-                var plzEl = cardEl.querySelector(SEL.plzAttr);
-                var cityEl = cardEl.querySelector(SEL.cityAttr);
-                var linkEl = cardEl.querySelector(SEL.itemLink);
-                var plz = plzEl ? (plzEl.getAttribute("modal-partner-plz") || plzEl.textContent || "").trim() : "";
-                var city = cityEl ? (cityEl.getAttribute("modal-partner-city") || cityEl.textContent || "").trim() : "";
-                var slug = linkEl ? (linkEl.getAttribute("href") || "").split("/").pop() : "";
-                var name = slug.replace(/-/g, " ").replace(/\b\w/g, function (c) { return c.toUpperCase(); });
-
-                var info = name + " – " + plz + " " + city;
-                var field = document.querySelector('#input-fachpartner') ||
-                            document.querySelector('[data-partner-field="info"]') ||
-                            document.querySelector('[name="fachpartner"]');
-                if (field) field.value = info;
-              }
-            } catch (_) {}
-
             var modalId = trigger.getAttribute("data-modal-trigger");
-            // Try lumos modal API, retry briefly if not ready yet
-            function tryOpen(attempts) {
-              if (window.lumos && window.lumos.modal && window.lumos.modal.list[modalId]) {
-                window.lumos.modal.open(modalId);
-              } else if (attempts > 0) {
-                setTimeout(function () { tryOpen(attempts - 1); }, 100);
-              }
+            if (window.lumos && window.lumos.modal) {
+              window.lumos.modal.open(modalId);
             }
-            tryOpen(10);
           });
         });
 
