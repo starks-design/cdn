@@ -1342,22 +1342,16 @@
         target.dataset._bound = "1";
 
         target.addEventListener("click", function (e) {
-          // Check if click is inside a modal-trigger button area
-          var triggerEl = e.target.closest("[data-modal-trigger]");
-          if (!triggerEl) {
-            // Lumos clickable pattern: the click hits .clickable_btn
-            // which is inside .button_main_wrap[data-modal-trigger]
-            var btn = e.target.closest(".clickable_btn, .clickable_link, .button_main_wrap");
-            if (btn) {
-              var wrap = btn.closest("[data-modal-trigger]") || btn.parentElement && btn.parentElement.closest("[data-modal-trigger]");
-              if (wrap) triggerEl = wrap;
-            }
-          }
-
-          if (triggerEl) {
+          // Check if click landed on a modal trigger button.
+          // The Lumos clickable pattern places .clickable_btn as a cover,
+          // so e.target is always the btn/link, never the [data-modal-trigger] itself.
+          // We check: does the click target have a [data-modal-trigger] ancestor
+          // that is inside this zoom-target?
+          var modalTrigger = target.querySelector("[data-modal-trigger]");
+          if (modalTrigger && modalTrigger.contains(e.target)) {
             e.preventDefault();
             e.stopPropagation();
-            var modalId = triggerEl.getAttribute("data-modal-trigger");
+            var modalId = modalTrigger.getAttribute("data-modal-trigger");
             if (window.lumos && window.lumos.modal) {
               window.lumos.modal.open(modalId);
             }
