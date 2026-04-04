@@ -1342,19 +1342,9 @@
         target.dataset._bound = "1";
 
         target.addEventListener("click", function (e) {
-          // Check all modal triggers inside this zoom-target
-          var triggers = qsa("[data-modal-trigger]", target);
-          for (var t = 0; t < triggers.length; t++) {
-            if (triggers[t].contains(e.target)) {
-              e.preventDefault();
-              e.stopPropagation();
-              var modalId = triggers[t].getAttribute("data-modal-trigger");
-              if (window.lumos && window.lumos.modal) {
-                window.lumos.modal.open(modalId);
-              }
-              return;
-            }
-          }
+          // If click is on the modal trigger button, let it bubble
+          // to the document-level modal handler — do NOT stopPropagation
+          if (e.target.closest("[data-modal-trigger]")) return;
 
           e.preventDefault();
           e.stopPropagation();
