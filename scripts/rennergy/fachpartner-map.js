@@ -1368,9 +1368,15 @@
             }
 
             var modalId = trigger.getAttribute("data-modal-trigger");
-            if (window.lumos && window.lumos.modal) {
-              window.lumos.modal.open(modalId);
+            // Try lumos modal API, retry briefly if not ready yet
+            function tryOpen(attempts) {
+              if (window.lumos && window.lumos.modal && window.lumos.modal.list[modalId]) {
+                window.lumos.modal.open(modalId);
+              } else if (attempts > 0) {
+                setTimeout(function () { tryOpen(attempts - 1); }, 100);
+              }
             }
+            tryOpen(10);
           });
         });
 
