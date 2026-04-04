@@ -1341,11 +1341,20 @@
         if (target.dataset._bound === "1") return;
         target.dataset._bound = "1";
 
-        target.addEventListener("click", function (e) {
-          // If click is on the modal trigger button, let it bubble
-          // to the document-level modal handler — do NOT stopPropagation
-          if (e.target.closest("[data-modal-trigger]")) return;
+        // Bind modal triggers inside this zoom-target directly
+        qsa("[data-modal-trigger]", target).forEach(function (trigger) {
+          if (trigger.dataset._modalBound === "1") return;
+          trigger.dataset._modalBound = "1";
+          trigger.addEventListener("click", function (e) {
+            e.stopPropagation();
+            var modalId = trigger.getAttribute("data-modal-trigger");
+            if (window.lumos && window.lumos.modal) {
+              window.lumos.modal.open(modalId);
+            }
+          });
+        });
 
+        target.addEventListener("click", function (e) {
           e.preventDefault();
           e.stopPropagation();
           var cardEl = target.closest(SEL.partnerItem);
