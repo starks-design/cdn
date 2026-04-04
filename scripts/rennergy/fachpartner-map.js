@@ -7,7 +7,11 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.1.4
+ * Version: 2.1.5
+ *
+ * Changelog v2.1.5 (2026-04-04):
+ *   - stopPropagation auf zoom-target Click entfernt — blockierte
+ *     Modal-Trigger auf Mobile (Event bubbelte nicht zum document)
  *
  * Changelog v2.1.4 (2026-04-03):
  *   - Search-Reset Button nur sichtbar wenn Text im Suchfeld steht
