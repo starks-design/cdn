@@ -1599,8 +1599,20 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.13";
-      console.log("[fachpartner-map] v" + VERSION);
+      var VERSION = "2.2.14";
+      var _g = computeGridLayout();
+      console.log("[fachpartner-map] v" + VERSION, {
+        viewport: _g.vw,
+        margin: Math.round(_g.margin),
+        gutter: Math.round(_g.gutter),
+        containerW: Math.round(_g.containerW),
+        containerLeft: Math.round(_g.containerLeft),
+        colW: Math.round(_g.colW * 10) / 10,
+        mapAreaW: Math.round(_g.mapAreaW),
+        visibleCenter: Math.round(_g.containerLeft + _g.mapAreaW / 2),
+        mapCenter: Math.round(_g.vw / 2),
+        offset: computeOffset()
+      });
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
         badge.textContent = "v" + VERSION;
