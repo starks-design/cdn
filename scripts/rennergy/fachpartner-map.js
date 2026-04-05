@@ -1,4 +1,4 @@
-/* Rennergy Fachpartner Map v2.2.11 — see README.md for changelog */
+/* Rennergy Fachpartner Map v2.2.12 — see README.md for changelog */
 (function () {
   "use strict";
   var MAPBOX_TOKEN =
@@ -496,14 +496,25 @@
 
         var mapRect = mapEl.getBoundingClientRect();
         var cRect = container.getBoundingClientRect();
-        var sLeft = sidebar ? sidebar.getBoundingClientRect().left : cRect.right;
+        var sRect = sidebar ? sidebar.getBoundingClientRect() : null;
+        var sLeft = sRect ? sRect.left : cRect.right;
 
         // Visible area = container left edge → sidebar left edge
         var visibleCenterX = (cRect.left + sLeft) / 2;
         // Map center (map is 100vw)
         var mapCenterX = mapRect.left + mapRect.width / 2;
+        var offset = [Math.round(visibleCenterX - mapCenterX), 0];
 
-        return [Math.round(visibleCenterX - mapCenterX), 0];
+        console.log("[fachpartner-map] computeOffset:", {
+          viewport: window.innerWidth,
+          map: { l: Math.round(mapRect.left), w: Math.round(mapRect.width), center: Math.round(mapCenterX) },
+          container: { l: Math.round(cRect.left), r: Math.round(cRect.right), w: Math.round(cRect.width) },
+          sidebar: sRect ? { l: Math.round(sRect.left), w: Math.round(sRect.width) } : "NOT FOUND",
+          visibleCenter: Math.round(visibleCenterX),
+          offset: offset
+        });
+
+        return offset;
       }
       var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
       return [0, -Math.round(vh * 0.25)];
@@ -1587,7 +1598,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.11";
+      var VERSION = "2.2.12";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
