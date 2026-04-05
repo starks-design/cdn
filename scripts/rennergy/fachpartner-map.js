@@ -1304,6 +1304,8 @@
             if (window.lumos && window.lumos.modal) {
               window.lumos.modal.open(modalId);
             }
+            // Close bottom sheet on mobile when modal opens
+            if (!isHorizontalLayout()) sheetClose();
           });
         });
 
@@ -1593,7 +1595,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.18";
+      var VERSION = "2.2.19";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
