@@ -7,7 +7,12 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.2.05
+ * Version: 2.2.06
+ *
+ * Changelog v2.2.06 (2026-04-05):
+ *   - Bottom Sheet ins Hauptscript integriert (war separates Embed).
+ *     90%/25% Snap, Touch-Drag, Grabber-Tap-Toggle, Search-Focus schließt,
+ *     Marker-Tap öffnet, Card-Tap schließt, Viewport-Resize.
  *
  * Changelog v2.2.05 (2026-04-05):
  *   - Card-Tap Event: zoom-target Klick dispatcht "fachpartner:card-tap"
@@ -1589,6 +1594,119 @@
     }
 
 
+    // ─── Bottom Sheet (mobile) ────────────────────────────────────────────────
+
+    var sheet = {
+      OPEN: 0.90,
+      CLOSED: 0.25,
+      TRANS: "height 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
+      TAP_THRESH: 8,
+      el: null, grabber: null, frac: 0.25,
+      dragging: false, dragDist: 0, startY: 0, startH: 0, lastY: 0, lastT: 0
+    };
+
+    function sheetVH() {
+      return window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    }
+
+    function sheetSet(frac, animate) {
+      if (!sheet.el) return;
+      sheet.el.style.transition = animate ? sheet.TRANS : "none";
+      sheet.el.style.height = Math.round(sheetVH() * frac) + "px";
+      sheet.frac = frac;
+    }
+
+    function sheetIsOpen() { return sheet.frac > (sheet.OPEN + sheet.CLOSED) / 2; }
+    function sheetOpen()   { if (isHorizontalLayout()) return; sheetSet(sheet.OPEN, true); }
+    function sheetClose()  { if (isHorizontalLayout()) return; sheetSet(sheet.CLOSED, true); }
+    function sheetToggle() { sheetSet(sheetIsOpen() ? sheet.CLOSED : sheet.OPEN, true); }
+
+    function sheetSnap(frac, vel) {
+      if (Math.abs(vel) > 0.3) { sheetSet(vel < 0 ? sheet.OPEN : sheet.CLOSED, true); return; }
+      sheetSet(frac > (sheet.OPEN + sheet.CLOSED) / 2 ? sheet.OPEN : sheet.CLOSED, true);
+    }
+
+    function setupBottomSheet() {
+      sheet.el = qs(SEL.modalGroup);
+      sheet.grabber = qs(SEL.mobileGrabber);
+      if (!sheet.el || !sheet.grabber) return;
+
+      if (!isHorizontalLayout()) sheetSet(sheet.CLOSED, false);
+
+      sheet.grabber.addEventListener("touchstart", function (e) {
+        if (isHorizontalLayout()) return;
+        sheet.dragging = true; sheet.dragDist = 0;
+        sheet.startY = e.touches[0].clientY;
+        sheet.startH = sheet.el.getBoundingClientRect().height;
+        sheet.el.style.transition = "none";
+        sheet.lastY = sheet.startY; sheet.lastT = Date.now();
+      }, { passive: true });
+
+      sheet.grabber.addEventListener("touchmove", function (e) {
+        if (!sheet.dragging) return;
+        var y = e.touches[0].clientY;
+        var delta = sheet.startY - y;
+        sheet.dragDist = Math.max(sheet.dragDist, Math.abs(delta));
+        var minPx = Math.round(sheetVH() * sheet.CLOSED) - 20;
+        var maxPx = Math.round(sheetVH() * sheet.OPEN) + 20;
+        var px = Math.max(minPx, Math.min(maxPx, sheet.startH + delta));
+        sheet.el.style.height = px + "px";
+        sheet.frac = px / sheetVH();
+        sheet.lastY = y; sheet.lastT = Date.now();
+        e.preventDefault();
+      }, { passive: false });
+
+      sheet.grabber.addEventListener("touchend", function () {
+        if (!sheet.dragging) return;
+        sheet.dragging = false;
+        if (sheet.dragDist < sheet.TAP_THRESH) { sheetToggle(); return; }
+        var dt = Date.now() - sheet.lastT;
+        var dy = sheet.startY - sheet.lastY;
+        sheetSnap(sheet.frac, dt > 0 ? -(dy / dt) : 0);
+      }, { passive: true });
+
+      // Suchfeld-Focus → Sheet einklappen
+      if (searchInput) {
+        searchInput.addEventListener("focus", function () {
+          if (!isHorizontalLayout() && sheetIsOpen()) sheetClose();
+        });
+      }
+
+      // Karten-Tap → Sheet einklappen
+      document.addEventListener("fachpartner:card-tap", function () {
+        if (!isHorizontalLayout()) sheetClose();
+      });
+
+      // Marker-Tap auf Karte → Sheet öffnen (is--active Klasse)
+      var sheetObs = new MutationObserver(function (muts) {
+        if (isHorizontalLayout()) return;
+        for (var i = 0; i < muts.length; i++) {
+          var m = muts[i];
+          if (m.type === "attributes" && m.attributeName === "class") {
+            if (m.target.classList.contains("is--active") && m.target.matches(SEL.partnerItem)) {
+              sheetOpen(); return;
+            }
+          }
+        }
+      });
+
+      var resultsWrap = qs(SEL.sidebarScroll);
+      if (resultsWrap) {
+        sheetObs.observe(resultsWrap, { attributes: true, attributeFilter: ["class"], subtree: true });
+      }
+
+      // Viewport resize
+      function sheetRecalc() {
+        if (isHorizontalLayout()) { sheet.el.style.height = ""; sheet.el.style.transition = ""; return; }
+        if (!sheet.dragging) sheetSet(sheet.frac, true);
+      }
+      window.addEventListener("resize", sheetRecalc);
+      if (window.visualViewport) window.visualViewport.addEventListener("resize", sheetRecalc);
+
+      console.log("[fachpartner-map] BottomSheet ready");
+    }
+
+
     // ─── Boot ───────────────────────────────────────────────────────────────────
 
     map.on("load", async function () {
@@ -1611,6 +1729,7 @@
 
       bindZoomTargets();
       setupDomObserver();
+      setupBottomSheet();
 
       requestAnimationFrame(function () {
         setTimeout(function () { forceLayerColors(); applyGermanLabels(); }, 80);
@@ -1620,7 +1739,7 @@
       setSearchNoneVisible(false);
 
       // Version debug — ?debug=1 zeigt Badge dauerhaft
-      var VERSION = "2.2.05";
+      var VERSION = "2.2.06";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
