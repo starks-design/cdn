@@ -869,15 +869,19 @@
         });
       });
 
-      geoData = allGeoData.slice();
+      // Only reset geoData + update map source if no active search filter.
+      // If a search is active, setupDomObserver calls setFilterByQuery next,
+      // which re-filters geoData and updates the source correctly.
+      if (!currentQuery) {
+        geoData = allGeoData.slice();
+        addOrUpdateSource();
+        fitAll(false);
+      }
 
-      addOrUpdateSource();
       updateResultInfo();
       updateDistancePills();
       updateNoResults();
       updateAussendienstVisibility();
-
-      if (!currentQuery) fitAll(false);
     }
 
     function applyCardsVisibility(allowedSet) {
@@ -1600,7 +1604,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.20";
+      var VERSION = "2.2.21";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
