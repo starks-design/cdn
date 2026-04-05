@@ -1,4 +1,4 @@
-/* Rennergy Fachpartner Map v2.2.12 — see README.md for changelog */
+/* Rennergy Fachpartner Map v2.2.13 — see README.md for changelog */
 (function () {
   "use strict";
   var MAPBOX_TOKEN =
@@ -447,74 +447,75 @@
      * Dynamic padding for fitBounds — ensures markers stay within the
      * visible 9-column area (to the left of the 3-column sidebar).
      *
-     * Reads the actual sidebar width and container margin from the DOM
-     * so it adapts to any viewport width.
+     * Computed purely from CSS variables (no DOM element measurement):
+     *   --site--margin:  clamp(1rem .. 3rem)
+     *   --site--gutter:  gap between columns
+     *   --max-width--main: calc(120 * 1rem) = 1920px
+     *   --site--column-count: 12
+     * Map area = first 8 of 12 columns.  #map is 100vw.
      */
-    /**
-     * Layout: #map is 100vw. .modal-wrapper.u-container is absolute,
-     * centered (margin auto, max-width: 120rem). Sidebar (.modal-group)
-     * sits inside modal-wrapper, pushed right via justify-content: flex-end.
-     *
-     * "Visible map area" = from modal-wrapper left edge to sidebar left edge.
-     * We center the marker in that area.
-     */
+    function measureCSSVar(prop) {
+      var val = getComputedStyle(document.documentElement).getPropertyValue(prop);
+      if (!val || !val.trim()) return 0;
+      var probe = document.createElement("div");
+      probe.style.cssText = "position:absolute;left:-9999px;width:" + val.trim();
+      document.body.appendChild(probe);
+      var px = probe.offsetWidth;
+      document.body.removeChild(probe);
+      return px;
+    }
+
+    function computeGridLayout() {
+      var vw = window.innerWidth;
+      var margin = measureCSSVar("--site--margin") || 16;
+      var gutter = measureCSSVar("--site--gutter") || 16;
+      var maxW = measureCSSVar("--max-width--main") || 1920;
+      var colCount = parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue("--site--column-count")
+      ) || 12;
+
+      var containerW = Math.min(maxW, vw - margin * 2);
+      var containerLeft = (vw - containerW) / 2;
+      var colW = (containerW - gutter * (colCount - 1)) / colCount;
+      // Map area = 8 columns + 7 inner gutters
+      var mapAreaW = 8 * colW + 7 * gutter;
+
+      return {
+        vw: vw, margin: margin, gutter: gutter,
+        containerW: containerW, containerLeft: containerLeft,
+        colW: colW, mapAreaW: mapAreaW
+      };
+    }
+
     function computePadding() {
       if (!isHorizontalLayout()) return PAD_TABLET;
 
-      var mapEl = qs("#" + SEL.mapContainer);
-      var container = qs(".modal-wrapper");
-      var sidebar = qs(SEL.modalGroup);
-
-      if (!mapEl || !container) return PAD_DESKTOP_FALLBACK;
-
-      var mapRect = mapEl.getBoundingClientRect();
-      var cRect = container.getBoundingClientRect();
-      var sRect = sidebar ? sidebar.getBoundingClientRect() : cRect;
+      var g = computeGridLayout();
 
       var nav = qs(".nav_wrap") || qs("nav") || qs(".w-nav");
       var navHeight = (nav && nav.offsetHeight) || 80;
 
       var zoomControls = qs(".zoom-controls.interaktive-karte");
       var zoomWidth = (zoomControls && zoomControls.offsetWidth) || 0;
-      var gutter = 16;
 
+      // Padding relative to map edges (map is 100vw = starts at 0)
       return {
         top:    navHeight + 40,
-        right:  Math.max(gutter, mapRect.right - sRect.left + gutter),
+        right:  Math.max(g.gutter, g.vw - g.containerLeft - g.mapAreaW),
         bottom: 80,
-        left:   Math.max(gutter, cRect.left - mapRect.left + (zoomWidth ? zoomWidth + gutter : gutter))
+        left:   Math.max(g.gutter, g.containerLeft + (zoomWidth ? zoomWidth + g.gutter : g.gutter))
       };
     }
 
     function computeOffset() {
       if (isHorizontalLayout()) {
-        var mapEl = qs("#" + SEL.mapContainer);
-        var container = qs(".modal-wrapper");
-        var sidebar = qs(SEL.modalGroup);
-
-        if (!mapEl || !container) return [0, 0];
-
-        var mapRect = mapEl.getBoundingClientRect();
-        var cRect = container.getBoundingClientRect();
-        var sRect = sidebar ? sidebar.getBoundingClientRect() : null;
-        var sLeft = sRect ? sRect.left : cRect.right;
-
-        // Visible area = container left edge → sidebar left edge
-        var visibleCenterX = (cRect.left + sLeft) / 2;
+        var g = computeGridLayout();
+        // Center of the visible 9-column map area
+        var visibleCenterX = g.containerLeft + g.mapAreaW / 2;
         // Map center (map is 100vw)
-        var mapCenterX = mapRect.left + mapRect.width / 2;
-        var offset = [Math.round(visibleCenterX - mapCenterX), 0];
+        var mapCenterX = g.vw / 2;
 
-        console.log("[fachpartner-map] computeOffset:", {
-          viewport: window.innerWidth,
-          map: { l: Math.round(mapRect.left), w: Math.round(mapRect.width), center: Math.round(mapCenterX) },
-          container: { l: Math.round(cRect.left), r: Math.round(cRect.right), w: Math.round(cRect.width) },
-          sidebar: sRect ? { l: Math.round(sRect.left), w: Math.round(sRect.width) } : "NOT FOUND",
-          visibleCenter: Math.round(visibleCenterX),
-          offset: offset
-        });
-
-        return offset;
+        return [Math.round(visibleCenterX - mapCenterX), 0];
       }
       var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
       return [0, -Math.round(vh * 0.25)];
@@ -1598,7 +1599,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.12";
+      var VERSION = "2.2.13";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
