@@ -1481,6 +1481,8 @@
 
       sheet.grabber.addEventListener("touchstart", function (e) {
         if (isHorizontalLayout()) return;
+        // Skip if close button was tapped
+        if (e.target.closest('[data-sheet-trigger="close"]')) { sheet.dragging = false; return; }
         sheet.dragging = true; sheet.dragDist = 0;
         sheet.startY = e.touches[0].clientY;
         sheet.startH = sheet.el.getBoundingClientRect().height;
@@ -1641,7 +1643,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.27";
+      var VERSION = "2.2.28";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
