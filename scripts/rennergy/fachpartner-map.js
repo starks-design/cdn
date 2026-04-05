@@ -757,7 +757,10 @@
 
       var bounds = new mapboxgl.LngLatBounds();
       geoData.forEach(function (p) { bounds.extend([p.longitude, p.latitude]); });
+      // Extra padding on top of setPadding to prevent cluster bubbles being cut off
+      var extra = isHorizontalLayout() ? 40 : 60;
       map.fitBounds(bounds, {
+        padding: { top: extra, right: extra, bottom: extra, left: extra },
         duration: animate ? ANIM.fitBounds : 0,
         linear: false
       });
@@ -1431,7 +1434,7 @@
 
     var sheet = {
       OPEN: 0.90,
-      CLOSED: 0.20,
+      CLOSED: 0,
       TRANS: "height 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
       TAP_THRESH: 8,
       el: null, grabber: null, frac: 0,
@@ -1636,7 +1639,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.25";
+      var VERSION = "2.2.26";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
