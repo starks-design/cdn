@@ -1434,6 +1434,7 @@
 
     var sheet = {
       OPEN: 0.90,
+      MIN: 0.20,
       CLOSED: 0,
       TRANS: "height 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
       TAP_THRESH: 8,
@@ -1452,14 +1453,15 @@
       sheet.frac = frac;
     }
 
-    function sheetIsOpen() { return sheet.frac > (sheet.OPEN + sheet.CLOSED) / 2; }
+    function sheetIsOpen() { return sheet.frac > (sheet.OPEN + sheet.MIN) / 2; }
     function sheetOpen()   { if (isHorizontalLayout()) return; sheetSet(sheet.OPEN, true); }
     function sheetClose()  { if (isHorizontalLayout()) return; sheetSet(sheet.CLOSED, true); }
-    function sheetToggle() { sheetSet(sheetIsOpen() ? sheet.CLOSED : sheet.OPEN, true); }
+    function sheetMinimize() { if (isHorizontalLayout()) return; sheetSet(sheet.MIN, true); }
+    function sheetToggle() { sheetSet(sheetIsOpen() ? sheet.MIN : sheet.OPEN, true); }
 
     function sheetSnap(frac, vel) {
-      if (Math.abs(vel) > 0.3) { sheetSet(vel < 0 ? sheet.OPEN : sheet.CLOSED, true); return; }
-      sheetSet(frac > (sheet.OPEN + sheet.CLOSED) / 2 ? sheet.OPEN : sheet.CLOSED, true);
+      if (Math.abs(vel) > 0.3) { sheetSet(vel < 0 ? sheet.OPEN : sheet.MIN, true); return; }
+      sheetSet(frac > (sheet.OPEN + sheet.MIN) / 2 ? sheet.OPEN : sheet.MIN, true);
     }
 
     function setupBottomSheet() {
@@ -1491,7 +1493,7 @@
         var y = e.touches[0].clientY;
         var delta = sheet.startY - y;
         sheet.dragDist = Math.max(sheet.dragDist, Math.abs(delta));
-        var minPx = Math.round(sheetVH() * sheet.CLOSED) - 20;
+        var minPx = Math.round(sheetVH() * sheet.MIN) - 20;
         var maxPx = Math.round(sheetVH() * sheet.OPEN) + 20;
         var px = Math.max(minPx, Math.min(maxPx, sheet.startH + delta));
         sheet.el.style.height = px + "px";
@@ -1519,7 +1521,7 @@
       document.addEventListener("fachpartner:card-tap", function () {
         if (!isHorizontalLayout()) {
           _cardTapLock = true;
-          sheetClose();
+          sheetMinimize();
           setTimeout(function () { _cardTapLock = false; }, 600);
         }
       });
@@ -1639,7 +1641,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.26";
+      var VERSION = "2.2.27";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
