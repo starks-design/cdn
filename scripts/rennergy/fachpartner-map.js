@@ -1431,7 +1431,7 @@
 
     var sheet = {
       OPEN: 0.90,
-      CLOSED: 0.25,
+      CLOSED: 0.20,
       TRANS: "height 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
       TAP_THRESH: 8,
       el: null, grabber: null, frac: 0,
@@ -1464,8 +1464,15 @@
       sheet.grabber = qs(SEL.mobileGrabber);
       if (!sheet.el || !sheet.grabber) return;
 
-      // Start fully hidden (0); after first interaction, CLOSED (0.25) is the minimum
+      // Start fully hidden (0); after first interaction, CLOSED (20%) is the minimum
       if (!isHorizontalLayout()) sheetSet(0, false);
+
+      // Close trigger: [data-sheet-trigger="close"] → fully hide sheet (0%)
+      qsa('[data-sheet-trigger="close"]').forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          if (!isHorizontalLayout()) sheetSet(0, true);
+        });
+      });
 
       sheet.grabber.addEventListener("touchstart", function (e) {
         if (isHorizontalLayout()) return;
@@ -1629,7 +1636,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.24";
+      var VERSION = "2.2.25";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
