@@ -1476,12 +1476,17 @@
         });
       }
 
+      var _cardTapLock = false;
       document.addEventListener("fachpartner:card-tap", function () {
-        if (!isHorizontalLayout()) sheetClose();
+        if (!isHorizontalLayout()) {
+          _cardTapLock = true;
+          sheetClose();
+          setTimeout(function () { _cardTapLock = false; }, 600);
+        }
       });
 
       var sheetObs = new MutationObserver(function (muts) {
-        if (isHorizontalLayout()) return;
+        if (isHorizontalLayout() || _cardTapLock) return;
         for (var i = 0; i < muts.length; i++) {
           var m = muts[i];
           if (m.type === "attributes" && m.attributeName === "class") {
@@ -1595,7 +1600,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.19";
+      var VERSION = "2.2.20";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
