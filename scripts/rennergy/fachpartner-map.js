@@ -7,7 +7,11 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.2.01
+ * Version: 2.2.02
+ *
+ * Changelog v2.2.02 (2026-04-05):
+ *   - Fix: DOM-Sort nur wenn Reihenfolge sich tatsaechlich aendert
+ *     (verhindert visuelles Flackern bei gleicher Distanz)
  *
  * Changelog v2.2.01 (2026-04-05):
  *   - Fix: Stabile Sortierung (cardIndex Tiebreaker bei gleicher Distanz)
@@ -479,9 +483,17 @@
         return diff !== 0 ? diff : idxA - idxB;
       });
 
-      cards.forEach(function (card) {
-        card.parentNode.appendChild(card);
-      });
+      // Nur DOM anfassen wenn sich die Reihenfolge tatsaechlich aendert
+      var needsMove = false;
+      for (var i = 1; i < cards.length; i++) {
+        if (cards[i].compareDocumentPosition(cards[i - 1]) & Node.DOCUMENT_POSITION_FOLLOWING) {
+          needsMove = true;
+          break;
+        }
+      }
+      if (needsMove) {
+        cards.forEach(function (card) { card.parentNode.appendChild(card); });
+      }
     }
 
     function updateDistancePills() {
@@ -1578,7 +1590,7 @@
       setSearchNoneVisible(false);
 
       // Version debug — ?debug=1 zeigt Badge dauerhaft
-      var VERSION = "2.2.01";
+      var VERSION = "2.2.02";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
