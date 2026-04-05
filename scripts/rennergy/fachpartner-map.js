@@ -464,11 +464,14 @@
       if (!cards.length) return;
 
       cards.sort(function (a, b) {
-        var gA = allGeoData.find(function (p) { return p.cardIndex === parseInt(a.dataset.cardIndex, 10); });
-        var gB = allGeoData.find(function (p) { return p.cardIndex === parseInt(b.dataset.cardIndex, 10); });
+        var idxA = parseInt(a.dataset.cardIndex, 10);
+        var idxB = parseInt(b.dataset.cardIndex, 10);
+        var gA = allGeoData.find(function (p) { return p.cardIndex === idxA; });
+        var gB = allGeoData.find(function (p) { return p.cardIndex === idxB; });
         if (!gA || !gB) return 0;
-        return distanceKm(gA.latitude, gA.longitude, center.lat, center.lng)
-             - distanceKm(gB.latitude, gB.longitude, center.lat, center.lng);
+        var diff = distanceKm(gA.latitude, gA.longitude, center.lat, center.lng)
+                 - distanceKm(gB.latitude, gB.longitude, center.lat, center.lng);
+        return diff !== 0 ? diff : idxA - idxB;
       });
 
       cards.forEach(function (card) {
@@ -1072,8 +1075,9 @@
       });
 
       geoData.sort(function (a, b) {
-        return distanceKm(a.latitude, a.longitude, center.lat, center.lng)
-             - distanceKm(b.latitude, b.longitude, center.lat, center.lng);
+        var diff = distanceKm(a.latitude, a.longitude, center.lat, center.lng)
+                 - distanceKm(b.latitude, b.longitude, center.lat, center.lng);
+        return diff !== 0 ? diff : a.cardIndex - b.cardIndex;
       });
 
       applyCardsVisibility(new Set(geoData.map(function (p) { return p.cardIndex; })));
@@ -1089,10 +1093,11 @@
 
     // ─── Suggestions ────────────────────────────────────────────────────────────
 
-    var suggestState = { items: [], activeIndex: -1, open: false };
+    var suggestState = { items: [], activeIndex: -1, open: false, suppressed: false };
 
     function hideSuggestions() {
       suggestState.open = false;
+      suggestState.suppressed = true;
       suggestState.activeIndex = -1;
       if (suggestPanel) suggestPanel.style.display = "none";
     }
@@ -1105,7 +1110,7 @@
 
     function setSuggestHover(index) {
       if (!suggestList) return;
-      var nodes = Array.from(suggestList.querySelectorAll('[data-suggest="template"]'));
+      var nodes = Array.from(suggestList.querySelectorAll('[data-suggest-generated="1"]'));
       nodes.forEach(function (n) { n.classList.remove("is-hover"); });
       if (index >= 0 && index < nodes.length) {
         nodes[index].classList.add("is-hover");
@@ -1115,6 +1120,7 @@
 
     function renderSuggestions(items) {
       if (!suggestPanel || !suggestList || !suggestTemplate) return;
+      if (suggestState.suppressed) return;
 
       qsa('[data-suggest-generated="1"]', suggestList).forEach(function (el) { el.remove(); });
 
@@ -1343,6 +1349,7 @@
       }, SEARCH_DEBOUNCE_MS);
 
       searchInput.addEventListener("input", function () {
+        suggestState.suppressed = false;
         if (searchResetBtn) {
           searchResetBtn.style.display = searchInput.value.trim() ? "" : "none";
         }
