@@ -7,7 +7,12 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.2.03
+ * Version: 2.2.04
+ *
+ * Changelog v2.2.04 (2026-04-05):
+ *   - DOM-Sort komplett deaktiviert (sortCardsByDistance entfernt).
+ *     Finsweet-Nesting vertraegt kein DOM-Umsortieren.
+ *     Pillen + Distanzberechnung bleiben aktiv.
  *
  * Changelog v2.2.03 (2026-04-05):
  *   - Fix Flipping: Sort pro Parent-Container (nicht Cross-Container),
@@ -1078,10 +1083,9 @@
         // Geocode im Hintergrund für Distanz-Pillen (kein Filter, nur Anzeige)
         var seq = ++filterSeq;
         geocodeQuery(qRaw).then(function (c) {
-          if (seq !== filterSeq) return; // veraltet, neuere Suche laeuft
+          if (seq !== filterSeq) return;
           searchCenter = c || null;
           updateDistancePills();
-          if (c) sortCardsByDistance(c);
         });
 
         applyCardsVisibility(new Set(geoData.map(function (p) { return p.cardIndex; })));
@@ -1118,7 +1122,6 @@
       });
 
       applyCardsVisibility(new Set(geoData.map(function (p) { return p.cardIndex; })));
-      sortCardsByDistance(center);
       addOrUpdateSource();
       setRadiusOverlay(center, radius);
       updateResultInfo();
@@ -1610,7 +1613,7 @@
       setSearchNoneVisible(false);
 
       // Version debug — ?debug=1 zeigt Badge dauerhaft
-      var VERSION = "2.2.03";
+      var VERSION = "2.2.04";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
