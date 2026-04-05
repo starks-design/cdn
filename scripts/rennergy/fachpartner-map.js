@@ -1,4 +1,4 @@
-/* Rennergy Fachpartner Map v2.2.10 — see README.md for changelog */
+/* Rennergy Fachpartner Map v2.2.11 — see README.md for changelog */
 (function () {
   "use strict";
   var MAPBOX_TOKEN =
@@ -450,69 +450,57 @@
      * Reads the actual sidebar width and container margin from the DOM
      * so it adapts to any viewport width.
      */
+    /**
+     * Layout: #map is 100vw. .modal-wrapper.u-container is absolute,
+     * centered (margin auto, max-width: 120rem). Sidebar (.modal-group)
+     * sits inside modal-wrapper, pushed right via justify-content: flex-end.
+     *
+     * "Visible map area" = from modal-wrapper left edge to sidebar left edge.
+     * We center the marker in that area.
+     */
     function computePadding() {
       if (!isHorizontalLayout()) return PAD_TABLET;
 
       var mapEl = qs("#" + SEL.mapContainer);
-      var sidebar = getScrollWrapper();
+      var container = qs(".modal-wrapper");
+      var sidebar = qs(SEL.modalGroup);
 
-      // Calculate actual sidebar overlap with map container
-      var sidebarOverlap = 0;
-      if (mapEl && sidebar) {
-        var mapRect = mapEl.getBoundingClientRect();
-        var sidebarRect = sidebar.getBoundingClientRect();
-        sidebarOverlap = Math.max(0, mapRect.right - sidebarRect.left);
-      } else if (sidebar) {
-        sidebarOverlap = sidebar.offsetWidth || 0;
-      }
+      if (!mapEl || !container) return PAD_DESKTOP_FALLBACK;
 
-      var gutter = 16;
-      try {
-        var g = getComputedStyle(document.documentElement).getPropertyValue("--site--gutter");
-        if (g) {
-          var gProbe = document.createElement("div");
-          gProbe.style.position = "absolute";
-          gProbe.style.left = "-9999px";
-          gProbe.style.width = g.trim();
-          document.body.appendChild(gProbe);
-          gutter = gProbe.offsetWidth || 16;
-          document.body.removeChild(gProbe);
-        }
-      } catch (_) {}
+      var mapRect = mapEl.getBoundingClientRect();
+      var cRect = container.getBoundingClientRect();
+      var sRect = sidebar ? sidebar.getBoundingClientRect() : cRect;
 
       var nav = qs(".nav_wrap") || qs("nav") || qs(".w-nav");
       var navHeight = (nav && nav.offsetHeight) || 80;
 
       var zoomControls = qs(".zoom-controls.interaktive-karte");
       var zoomWidth = (zoomControls && zoomControls.offsetWidth) || 0;
-      var leftExtra = zoomWidth ? zoomWidth + gutter * 2 : gutter;
+      var gutter = 16;
 
-      var pad = {
+      return {
         top:    navHeight + 40,
-        right:  sidebarOverlap + gutter * 2,
+        right:  Math.max(gutter, mapRect.right - sRect.left + gutter),
         bottom: 80,
-        left:   leftExtra + gutter
+        left:   Math.max(gutter, cRect.left - mapRect.left + (zoomWidth ? zoomWidth + gutter : gutter))
       };
-      return pad;
     }
 
     function computeOffset() {
       if (isHorizontalLayout()) {
         var mapEl = qs("#" + SEL.mapContainer);
-        if (!mapEl) return [0, 0];
+        var container = qs(".modal-wrapper");
+        var sidebar = qs(SEL.modalGroup);
+
+        if (!mapEl || !container) return [0, 0];
+
         var mapRect = mapEl.getBoundingClientRect();
+        var cRect = container.getBoundingClientRect();
+        var sLeft = sidebar ? sidebar.getBoundingClientRect().left : cRect.right;
 
-        var sidebar = getScrollWrapper();
-        var overlap = 0;
-        if (sidebar) {
-          var sidebarRect = sidebar.getBoundingClientRect();
-          // Only count actual overlap between sidebar and map container
-          overlap = Math.max(0, mapRect.right - sidebarRect.left);
-        }
-
-        // Center of the visible map area (map minus sidebar overlap)
-        var visibleCenterX = mapRect.left + (mapRect.width - overlap) / 2;
-        // Mapbox measures offset from the map container center
+        // Visible area = container left edge → sidebar left edge
+        var visibleCenterX = (cRect.left + sLeft) / 2;
+        // Map center (map is 100vw)
         var mapCenterX = mapRect.left + mapRect.width / 2;
 
         return [Math.round(visibleCenterX - mapCenterX), 0];
@@ -1536,6 +1524,7 @@
         "  .zsiq_floatmain,",
         "  [id^='ze-snippet'],",
         "  #userlike-button,",
+        "  #superchat-widget,",
         "  div[data-chat-widget],",
         "  iframe[title*='chat' i],",
         "  iframe[title*='comment' i],",
@@ -1598,7 +1587,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.10";
+      var VERSION = "2.2.11";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
