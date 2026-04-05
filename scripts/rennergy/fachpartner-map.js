@@ -1,4 +1,4 @@
-/* Rennergy Fachpartner Map v2.2.08 — see README.md for changelog */
+/* Rennergy Fachpartner Map v2.2.09 — see README.md for changelog */
 (function () {
   "use strict";
   var MAPBOX_TOKEN =
@@ -1511,6 +1511,49 @@
       console.log("[fachpartner-map] BottomSheet ready");
     }
 
+    /* ── Hide global chat/comment widgets on mobile (Fachpartner page) ── */
+    function hideChatWidgetOnMobile() {
+      if (isHorizontalLayout()) return;
+      var style = document.createElement("style");
+      style.textContent = [
+        "@media (max-width: " + HORIZONTAL_MIN_WIDTH + "px) {",
+        "  #tawk-default-container,",
+        "  #tidio-chat,",
+        "  .crisp-client,",
+        "  #hubspot-messages-iframe-container,",
+        "  #drift-widget-container,",
+        "  #intercom-container,",
+        "  #fc_frame,",
+        "  #livechat-compact-container,",
+        "  #smartsupp-widget-container,",
+        "  #jivo-iframe-container,",
+        "  .zsiq_floatmain,",
+        "  [id^='ze-snippet'],",
+        "  #userlike-button,",
+        "  div[data-chat-widget],",
+        "  iframe[title*='chat' i],",
+        "  iframe[title*='comment' i],",
+        "  iframe[title*='messenger' i] {",
+        "    display: none !important;",
+        "    visibility: hidden !important;",
+        "    pointer-events: none !important;",
+        "  }",
+        "}"
+      ].join("\n");
+      document.head.appendChild(style);
+    }
+
+    /* ── Resize handler: re-center map on active partner or search ── */
+    var resizeRecenter = debounce(function () {
+      if (lastOpen) {
+        flyToWithSidebar(lastOpen.lng, lastOpen.lat, lastOpen.zoom);
+      } else if (searchCenter && currentRadiusKm) {
+        fitToRadius(searchCenter, currentRadiusKm, false);
+      } else if (geoData.length) {
+        fitAll(false);
+      }
+    }, 250);
+
     map.on("load", async function () {
       setupControls();
       setupSearchInput();
@@ -1532,6 +1575,8 @@
       bindZoomTargets();
       setupDomObserver();
       setupBottomSheet();
+      hideChatWidgetOnMobile();
+      window.addEventListener("resize", resizeRecenter);
 
       requestAnimationFrame(function () {
         setTimeout(function () { forceLayerColors(); applyGermanLabels(); }, 80);
@@ -1540,7 +1585,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.07";
+      var VERSION = "2.2.09";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
