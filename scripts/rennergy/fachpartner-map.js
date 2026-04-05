@@ -1,4 +1,4 @@
-/* Rennergy Fachpartner Map v2.2.13 — see README.md for changelog */
+/* Rennergy Fachpartner Map v2.3.0 — see README.md for changelog */
 (function () {
   "use strict";
   var MAPBOX_TOKEN =
@@ -17,9 +17,6 @@
   };
 
   var HORIZONTAL_MIN_WIDTH = 1200;
-
-  var PAD_DESKTOP_FALLBACK = { top: 120, right: 80, bottom: 120, left: 80 };
-  var PAD_TABLET  = { top: 90,  right: 48, bottom: 90,  left: 48 };
 
   var CLUSTER_RADIUS   = 90;
   var CLUSTER_MAX_ZOOM = 12;
@@ -256,8 +253,10 @@
     } catch (_) { return fallback; }
   }
 
+  var _themeColorCache = null;
   function getThemeColors() {
-    return {
+    if (_themeColorCache) return _themeColorCache;
+    _themeColorCache = {
       bubble:      resolveColor(MAP_VARS.bubble),
       bubbleHover: resolveColor(MAP_VARS.bubbleHover),
       bubbleActive:resolveColor(MAP_VARS.bubbleActive),
@@ -266,6 +265,7 @@
       radiusFill:  resolveColor(MAP_VARS.radiusFill),
       radiusLine:  resolveColor(MAP_VARS.radiusLine)
     };
+    return _themeColorCache;
   }
 
   function getUnclusteredPaint() {
@@ -364,46 +364,6 @@
       });
     }
 
-    function sortCardsByDistance(center) {
-      if (!center) return;
-      var root = resolveRoot();
-      var cards = qsa(SEL.partnerItem, root).filter(function (c) { return c.style.display !== "none"; });
-      if (!cards.length) return;
-
-      var distMap = new Map();
-      cards.forEach(function (card) {
-        var idx = parseInt(card.dataset.cardIndex, 10);
-        var geo = allGeoData.find(function (p) { return p.cardIndex === idx; });
-        distMap.set(idx, geo
-          ? distanceKm(geo.latitude, geo.longitude, center.lat, center.lng)
-          : Infinity);
-      });
-
-      var parentGroups = new Map();
-      cards.forEach(function (card) {
-        var parent = card.parentNode;
-        if (!parentGroups.has(parent)) parentGroups.set(parent, []);
-        parentGroups.get(parent).push(card);
-      });
-
-      parentGroups.forEach(function (group) {
-        var sorted = group.slice().sort(function (a, b) {
-          var dA = distMap.get(parseInt(a.dataset.cardIndex, 10));
-          var dB = distMap.get(parseInt(b.dataset.cardIndex, 10));
-          var diff = dA - dB;
-          return diff !== 0 ? diff : parseInt(a.dataset.cardIndex, 10) - parseInt(b.dataset.cardIndex, 10);
-        });
-
-        var needsMove = false;
-        for (var i = 0; i < sorted.length; i++) {
-          if (sorted[i] !== group[i]) { needsMove = true; break; }
-        }
-        if (needsMove) {
-          sorted.forEach(function (card) { card.parentNode.appendChild(card); });
-        }
-      });
-    }
-
     function updateDistancePills() {
       var root = resolveRoot();
       qsa(SEL.partnerItem, root).forEach(function (card) {
@@ -454,7 +414,11 @@
      *   --site--column-count: 12
      * Map area = first 8 of 12 columns.  #map is 100vw.
      */
+    var _cssVarCache = {};
+    window.addEventListener("resize", function () { _cssVarCache = {}; });
+
     function measureCSSVar(prop) {
+      if (prop in _cssVarCache) return _cssVarCache[prop];
       var val = getComputedStyle(document.documentElement).getPropertyValue(prop);
       if (!val || !val.trim()) return 0;
       var probe = document.createElement("div");
@@ -462,6 +426,7 @@
       document.body.appendChild(probe);
       var px = probe.offsetWidth;
       document.body.removeChild(probe);
+      _cssVarCache[prop] = px;
       return px;
     }
 
@@ -561,7 +526,7 @@
       if (!map.getLayer("search-radius-line"))
         map.addLayer({ id: "search-radius-line", type: "line", source: srcId, paint: { "line-color": c.radiusLine, "line-width": 2, "line-opacity": 0.9 } });
 
-      requestAnimationFrame(function () { setTimeout(forceLayerColors, 60); });
+      scheduleForceLayerColors();
     }
 
     function setRadiusOverlay(center, radiusKm) {
@@ -572,7 +537,7 @@
       }
       ensureRadiusLayers();
       map.getSource("search-radius").setData(makeCircleGeoJSON(center.lng, center.lat, radiusKm));
-      forceLayerColors();
+      scheduleForceLayerColors();
     }
 
     function geoDataToGeoJSON(arr) {
@@ -659,7 +624,7 @@
       }
 
       ensureRadiusLayers();
-      forceLayerColors();
+      scheduleForceLayerColors();
 
       requestAnimationFrame(function () { setTimeout(applyGermanLabels, 50); });
     }
@@ -695,6 +660,16 @@
       }
 
       try { map.triggerRepaint(); } catch (_) {}
+    }
+
+    var _forceColorsPending = false;
+    function scheduleForceLayerColors() {
+      if (_forceColorsPending) return;
+      _forceColorsPending = true;
+      requestAnimationFrame(function () {
+        _forceColorsPending = false;
+        forceLayerColors();
+      });
     }
 
     function clearFeatureStates() {
@@ -1327,6 +1302,7 @@
           var cardEl = target.closest(SEL.partnerItem);
           if (!cardEl) return;
           e.preventDefault();
+          e.stopPropagation();
           var idx = parseInt(cardEl.dataset.cardIndex, 10);
           if (!isNaN(idx)) {
             zoomToCardIndex(idx, 11);
@@ -1334,22 +1310,6 @@
           }
         });
 
-        // On mobile: also bind the whole partner item for tap-to-close
-        if (!isHorizontalLayout()) {
-          var partnerItem = target.closest(SEL.partnerItem);
-          if (partnerItem && !partnerItem.dataset._tapBound) {
-            partnerItem.dataset._tapBound = "1";
-            partnerItem.addEventListener("click", function (e) {
-              // Skip if modal trigger was tapped
-              if (e.target.closest("[data-modal-trigger]")) return;
-              var idx = parseInt(partnerItem.dataset.cardIndex, 10);
-              if (!isNaN(idx)) {
-                zoomToCardIndex(idx, 11);
-                document.dispatchEvent(new CustomEvent("fachpartner:card-tap"));
-              }
-            });
-          }
-        }
       });
     }
 
@@ -1357,13 +1317,14 @@
 
     function setupThemeObserver() {
       var obs = new MutationObserver(function () {
+        _themeColorCache = null;
         if (isStyleSwitching) return;
 
         var newStyle = isDarkMode() ? STYLE_DARK : STYLE_LIGHT;
 
         if (newStyle === currentStyle) {
           requestAnimationFrame(function () {
-            setTimeout(function () { forceLayerColors(); applyGermanLabels(); }, 60);
+            setTimeout(function () { scheduleForceLayerColors(); applyGermanLabels(); }, 60);
           });
           return;
         }
@@ -1407,8 +1368,12 @@
     }
 
     function setupDomObserver() {
+      var _lastPartnerCount = 0;
       var debouncedRebuild = debounce(async function () {
         if (isStyleSwitching) return;
+        var count = qsa(SEL.partnerItem, resolveRoot()).length;
+        if (count === _lastPartnerCount && count > 0) return;
+        _lastPartnerCount = count;
         await buildDataFromDOM();
         bindZoomTargets();
         setFilterByQuery(currentQuery, { noSuggest: true, noZoom: true });
@@ -1552,7 +1517,6 @@
       window.addEventListener("resize", sheetRecalc);
       if (window.visualViewport) window.visualViewport.addEventListener("resize", sheetRecalc);
 
-      console.log("[fachpartner-map] BottomSheet ready");
     }
 
     /* ── Mobile fixes: hide chat widgets + prevent Safari input zoom ── */
@@ -1637,37 +1601,39 @@
       window.addEventListener("resize", resizeRecenter);
 
       requestAnimationFrame(function () {
-        setTimeout(function () { forceLayerColors(); applyGermanLabels(); }, 80);
+        setTimeout(function () { scheduleForceLayerColors(); applyGermanLabels(); }, 80);
       });
 
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.28";
-      var _c = computeContainerLeft();
-      var _sLeft = computeSidebarLeft();
-      var _mw = qs(".modal-wrapper");
-      var _mg = qs(SEL.modalGroup);
-      var _mwRect = _mw ? _mw.getBoundingClientRect() : null;
-      var _mgRect = _mg ? _mg.getBoundingClientRect() : null;
+      var VERSION = "2.3.0";
 
-      var _lines = [
-        "v" + VERSION,
-        "--- CSS vars ---",
-        "vw:" + _c.vw + " margin:" + Math.round(_c.margin) + " maxW:" + _c.maxW,
-        "containerW:" + Math.round(_c.containerW) + " cLeft:" + Math.round(_c.containerLeft),
-        "--- DOM ---",
-        ".modal-wrapper: " + (_mwRect ? "l:" + Math.round(_mwRect.left) + " w:" + Math.round(_mwRect.width) : "?"),
-        ".modal-group:   " + (_mgRect ? "l:" + Math.round(_mgRect.left) + " w:" + Math.round(_mgRect.width) : "?"),
-        "--- map.setPadding ---",
-        JSON.stringify(_pad)
-      ];
-      console.log("[fachpartner-map] v" + VERSION, _lines.join("\n"));
+      if (new URLSearchParams(location.search).has("debug")) {
+        var _c = computeContainerLeft();
+        var _mw = qs(".modal-wrapper");
+        var _mg = qs(SEL.modalGroup);
+        var _mwRect = _mw ? _mw.getBoundingClientRect() : null;
+        var _mgRect = _mg ? _mg.getBoundingClientRect() : null;
 
-      var badge = document.createElement("pre");
-      badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:11px;color:#0f0;z-index:999999;pointer-events:auto;cursor:text;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.9);padding:10px 14px;border-radius:6px;line-height:1.5;margin:0;user-select:text;-webkit-user-select:text;";
-      badge.textContent = _lines.join("\n");
-      document.body.appendChild(badge);
+        var _lines = [
+          "v" + VERSION,
+          "--- CSS vars ---",
+          "vw:" + _c.vw + " margin:" + Math.round(_c.margin) + " maxW:" + _c.maxW,
+          "containerW:" + Math.round(_c.containerW) + " cLeft:" + Math.round(_c.containerLeft),
+          "--- DOM ---",
+          ".modal-wrapper: " + (_mwRect ? "l:" + Math.round(_mwRect.left) + " w:" + Math.round(_mwRect.width) : "?"),
+          ".modal-group:   " + (_mgRect ? "l:" + Math.round(_mgRect.left) + " w:" + Math.round(_mgRect.width) : "?"),
+          "--- map.setPadding ---",
+          JSON.stringify(_pad)
+        ];
+        console.log("[fachpartner-map] v" + VERSION, _lines.join("\n"));
+
+        var badge = document.createElement("pre");
+        badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:11px;color:#0f0;z-index:999999;pointer-events:auto;cursor:text;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.9);padding:10px 14px;border-radius:6px;line-height:1.5;margin:0;user-select:text;-webkit-user-select:text;";
+        badge.textContent = _lines.join("\n");
+        document.body.appendChild(badge);
+      }
     });
   });
 })();
