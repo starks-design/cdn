@@ -7,7 +7,11 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.2.04
+ * Version: 2.2.05
+ *
+ * Changelog v2.2.05 (2026-04-05):
+ *   - Card-Tap Event: zoom-target Klick dispatcht "fachpartner:card-tap"
+ *     CustomEvent, damit das Bottom Sheet sich schliessen kann.
  *
  * Changelog v2.2.04 (2026-04-05):
  *   - DOM-Sort komplett deaktiviert (sortCardsByDistance entfernt).
@@ -1491,7 +1495,10 @@
           var cardEl = target.closest(SEL.partnerItem);
           if (!cardEl) return;
           var idx = parseInt(cardEl.dataset.cardIndex, 10);
-          if (!isNaN(idx)) zoomToCardIndex(idx, 11);
+          if (!isNaN(idx)) {
+            zoomToCardIndex(idx, 11);
+            document.dispatchEvent(new CustomEvent("fachpartner:card-tap"));
+          }
         });
       });
     }
@@ -1613,7 +1620,7 @@
       setSearchNoneVisible(false);
 
       // Version debug — ?debug=1 zeigt Badge dauerhaft
-      var VERSION = "2.2.04";
+      var VERSION = "2.2.05";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
