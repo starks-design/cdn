@@ -487,8 +487,14 @@
 
     function updateMapPadding() {
       if (!isHorizontalLayout()) {
-        map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
-        return;
+        // Mobile: nav top + bottom sheet (closed = 25% of viewport)
+        var nav = qs(".nav_wrap") || qs("nav") || qs(".w-nav");
+        var navH = (nav && nav.offsetHeight) || 80;
+        var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
+        var sheetH = Math.round(vh * sheet.CLOSED);
+        var padding = { top: navH + 20, right: 0, bottom: sheetH + 20, left: 0 };
+        map.setPadding(padding);
+        return padding;
       }
 
       var c = computeContainerLeft();
@@ -1314,15 +1320,33 @@
         });
 
         target.addEventListener("click", function (e) {
-          e.preventDefault();
+          // Don't fire if the modal button was tapped (it has stopPropagation)
           var cardEl = target.closest(SEL.partnerItem);
           if (!cardEl) return;
+          e.preventDefault();
           var idx = parseInt(cardEl.dataset.cardIndex, 10);
           if (!isNaN(idx)) {
             zoomToCardIndex(idx, 11);
             document.dispatchEvent(new CustomEvent("fachpartner:card-tap"));
           }
         });
+
+        // On mobile: also bind the whole partner item for tap-to-close
+        if (!isHorizontalLayout()) {
+          var partnerItem = target.closest(SEL.partnerItem);
+          if (partnerItem && !partnerItem.dataset._tapBound) {
+            partnerItem.dataset._tapBound = "1";
+            partnerItem.addEventListener("click", function (e) {
+              // Skip if modal trigger was tapped
+              if (e.target.closest("[data-modal-trigger]")) return;
+              var idx = parseInt(partnerItem.dataset.cardIndex, 10);
+              if (!isNaN(idx)) {
+                zoomToCardIndex(idx, 11);
+                document.dispatchEvent(new CustomEvent("fachpartner:card-tap"));
+              }
+            });
+          }
+        }
       });
     }
 
@@ -1604,7 +1628,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.21";
+      var VERSION = "2.2.22";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
