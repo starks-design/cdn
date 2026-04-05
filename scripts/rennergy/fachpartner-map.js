@@ -7,7 +7,11 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.2.02
+ * Version: 2.2.03
+ *
+ * Changelog v2.2.03 (2026-04-05):
+ *   - Fix Flipping: Sort pro Parent-Container (nicht Cross-Container),
+ *     Distanz vorberechnet, filterSeq verhindert veraltete Geocode-Callbacks.
  *
  * Changelog v2.2.02 (2026-04-05):
  *   - Fix: DOM-Sort nur wenn Reihenfolge sich tatsaechlich aendert
@@ -394,6 +398,7 @@
     var lastOpen = null;
     var hoveredFeatureId = null;
     var activeFeatureId = null;
+    var filterSeq = 0;
 
     var currentQuery = "";
     var currentRadiusKm = null;
@@ -472,28 +477,41 @@
       var cards = qsa(SEL.partnerItem, root).filter(function (c) { return c.style.display !== "none"; });
       if (!cards.length) return;
 
-      cards.sort(function (a, b) {
-        var idxA = parseInt(a.dataset.cardIndex, 10);
-        var idxB = parseInt(b.dataset.cardIndex, 10);
-        var gA = allGeoData.find(function (p) { return p.cardIndex === idxA; });
-        var gB = allGeoData.find(function (p) { return p.cardIndex === idxB; });
-        if (!gA || !gB) return 0;
-        var diff = distanceKm(gA.latitude, gA.longitude, center.lat, center.lng)
-                 - distanceKm(gB.latitude, gB.longitude, center.lat, center.lng);
-        return diff !== 0 ? diff : idxA - idxB;
+      // Distanz pro Karte vorberechnen (Map cardIndex → km)
+      var distMap = new Map();
+      cards.forEach(function (card) {
+        var idx = parseInt(card.dataset.cardIndex, 10);
+        var geo = allGeoData.find(function (p) { return p.cardIndex === idx; });
+        distMap.set(idx, geo
+          ? distanceKm(geo.latitude, geo.longitude, center.lat, center.lng)
+          : Infinity);
       });
 
-      // Nur DOM anfassen wenn sich die Reihenfolge tatsaechlich aendert
-      var needsMove = false;
-      for (var i = 1; i < cards.length; i++) {
-        if (cards[i].compareDocumentPosition(cards[i - 1]) & Node.DOCUMENT_POSITION_FOLLOWING) {
-          needsMove = true;
-          break;
+      // Pro Parent-Container separat sortieren (Finsweet hat 2 Instanzen)
+      var parentGroups = new Map();
+      cards.forEach(function (card) {
+        var parent = card.parentNode;
+        if (!parentGroups.has(parent)) parentGroups.set(parent, []);
+        parentGroups.get(parent).push(card);
+      });
+
+      parentGroups.forEach(function (group) {
+        var sorted = group.slice().sort(function (a, b) {
+          var dA = distMap.get(parseInt(a.dataset.cardIndex, 10));
+          var dB = distMap.get(parseInt(b.dataset.cardIndex, 10));
+          var diff = dA - dB;
+          return diff !== 0 ? diff : parseInt(a.dataset.cardIndex, 10) - parseInt(b.dataset.cardIndex, 10);
+        });
+
+        // Nur DOM anfassen wenn Reihenfolge sich aendert
+        var needsMove = false;
+        for (var i = 0; i < sorted.length; i++) {
+          if (sorted[i] !== group[i]) { needsMove = true; break; }
         }
-      }
-      if (needsMove) {
-        cards.forEach(function (card) { card.parentNode.appendChild(card); });
-      }
+        if (needsMove) {
+          sorted.forEach(function (card) { card.parentNode.appendChild(card); });
+        }
+      });
     }
 
     function updateDistancePills() {
@@ -1058,7 +1076,9 @@
         });
 
         // Geocode im Hintergrund für Distanz-Pillen (kein Filter, nur Anzeige)
+        var seq = ++filterSeq;
         geocodeQuery(qRaw).then(function (c) {
+          if (seq !== filterSeq) return; // veraltet, neuere Suche laeuft
           searchCenter = c || null;
           updateDistancePills();
           if (c) sortCardsByDistance(c);
@@ -1590,7 +1610,7 @@
       setSearchNoneVisible(false);
 
       // Version debug — ?debug=1 zeigt Badge dauerhaft
-      var VERSION = "2.2.02";
+      var VERSION = "2.2.03";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
