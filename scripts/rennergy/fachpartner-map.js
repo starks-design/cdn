@@ -465,55 +465,55 @@
       return px;
     }
 
-    function computeGridLayout() {
+    /**
+     * Hybrid approach: container from CSS vars, sidebar from DOM.
+     */
+    function computeContainerLeft() {
       var vw = window.innerWidth;
       var margin = measureCSSVar("--site--margin") || 16;
-      var gutter = measureCSSVar("--site--gutter") || 16;
       var maxW = measureCSSVar("--max-width--main") || 1920;
-      var colCount = parseFloat(
-        getComputedStyle(document.documentElement).getPropertyValue("--site--column-count")
-      ) || 12;
-
       var containerW = Math.min(maxW, vw - margin * 2);
-      var containerLeft = (vw - containerW) / 2;
-      var colW = (containerW - gutter * (colCount - 1)) / colCount;
-      // Map area = 8 columns + 7 inner gutters
-      var mapAreaW = 8 * colW + 7 * gutter;
+      return { vw: vw, margin: margin, maxW: maxW, containerW: containerW, containerLeft: (vw - containerW) / 2 };
+    }
 
-      return {
-        vw: vw, margin: margin, gutter: gutter,
-        containerW: containerW, containerLeft: containerLeft,
-        colW: colW, mapAreaW: mapAreaW
-      };
+    function computeSidebarLeft() {
+      var sidebar = qs(SEL.modalGroup);
+      return sidebar ? sidebar.getBoundingClientRect().left : null;
     }
 
     function computePadding() {
       if (!isHorizontalLayout()) return PAD_TABLET;
 
-      var g = computeGridLayout();
+      var c = computeContainerLeft();
+      var sLeft = computeSidebarLeft();
 
       var nav = qs(".nav_wrap") || qs("nav") || qs(".w-nav");
       var navHeight = (nav && nav.offsetHeight) || 80;
-
       var zoomControls = qs(".zoom-controls.interaktive-karte");
       var zoomWidth = (zoomControls && zoomControls.offsetWidth) || 0;
+      var gutter = measureCSSVar("--site--gutter") || 16;
 
-      // Padding relative to map edges (map is 100vw = starts at 0)
+      var rightPad = sLeft !== null
+        ? Math.max(gutter, c.vw - sLeft)
+        : Math.max(gutter, c.containerW * 4 / 12);
+
       return {
         top:    navHeight + 40,
-        right:  Math.max(g.gutter, g.vw - g.containerLeft - g.mapAreaW),
+        right:  rightPad,
         bottom: 80,
-        left:   Math.max(g.gutter, g.containerLeft + (zoomWidth ? zoomWidth + g.gutter : g.gutter))
+        left:   Math.max(gutter, c.containerLeft + (zoomWidth ? zoomWidth + gutter : gutter))
       };
     }
 
     function computeOffset() {
       if (isHorizontalLayout()) {
-        var g = computeGridLayout();
-        // Center of the visible 9-column map area
-        var visibleCenterX = g.containerLeft + g.mapAreaW / 2;
-        // Map center (map is 100vw)
-        var mapCenterX = g.vw / 2;
+        var c = computeContainerLeft();
+        var sLeft = computeSidebarLeft();
+
+        // Visible area = from container left to sidebar left
+        var visibleRight = sLeft !== null ? sLeft : (c.containerLeft + c.containerW * 8 / 12);
+        var visibleCenterX = (c.containerLeft + visibleRight) / 2;
+        var mapCenterX = c.vw / 2;
 
         return [Math.round(visibleCenterX - mapCenterX), 0];
       }
@@ -1599,31 +1599,35 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.15";
-      var _g = computeGridLayout();
-      var _debugInfo = {
-        vw: _g.vw,
-        margin: Math.round(_g.margin),
-        gutter: Math.round(_g.gutter),
-        containerW: Math.round(_g.containerW),
-        containerLeft: Math.round(_g.containerLeft),
-        colW: Math.round(_g.colW * 10) / 10,
-        mapAreaW: Math.round(_g.mapAreaW),
-        visCenter: Math.round(_g.containerLeft + _g.mapAreaW / 2),
-        mapCenter: Math.round(_g.vw / 2),
-        offset: computeOffset()
-      };
-      console.log("[fachpartner-map] v" + VERSION, _debugInfo);
+      var VERSION = "2.2.16";
+      var _c = computeContainerLeft();
+      var _sLeft = computeSidebarLeft();
+      var _offset = computeOffset();
+      var _mw = qs(".modal-wrapper");
+      var _mg = qs(SEL.modalGroup);
+      var _mwRect = _mw ? _mw.getBoundingClientRect() : null;
+      var _mgRect = _mg ? _mg.getBoundingClientRect() : null;
 
-      // Always show debug overlay
-      var badge = document.createElement("div");
-      badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:11px;color:#0f0;z-index:999999;pointer-events:none;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.85);padding:8px 12px;border-radius:6px;line-height:1.6;max-width:320px;white-space:pre;";
-      badge.textContent = "v" + VERSION + "\n"
-        + "vw:" + _debugInfo.vw + "  margin:" + _debugInfo.margin + "  gutter:" + _debugInfo.gutter + "\n"
-        + "containerW:" + _debugInfo.containerW + "  left:" + _debugInfo.containerLeft + "\n"
-        + "colW:" + _debugInfo.colW + "  mapArea:" + _debugInfo.mapAreaW + "\n"
-        + "visCenter:" + _debugInfo.visCenter + "  mapCenter:" + _debugInfo.mapCenter + "\n"
-        + "offset: [" + _debugInfo.offset[0] + ", " + _debugInfo.offset[1] + "]";
+      var _lines = [
+        "v" + VERSION,
+        "--- CSS vars ---",
+        "vw:" + _c.vw + " margin:" + Math.round(_c.margin) + " maxW:" + _c.maxW,
+        "containerW:" + Math.round(_c.containerW) + " containerLeft:" + Math.round(_c.containerLeft),
+        "--- DOM rects ---",
+        ".modal-wrapper: " + (_mwRect ? "l:" + Math.round(_mwRect.left) + " w:" + Math.round(_mwRect.width) + " r:" + Math.round(_mwRect.right) : "NOT FOUND"),
+        ".modal-group:   " + (_mgRect ? "l:" + Math.round(_mgRect.left) + " w:" + Math.round(_mgRect.width) + " r:" + Math.round(_mgRect.right) : "NOT FOUND"),
+        "sidebarLeft(DOM): " + (_sLeft !== null ? Math.round(_sLeft) : "null"),
+        "--- result ---",
+        "visCenter:" + Math.round((_c.containerLeft + (_sLeft || _c.containerLeft + _c.containerW)) / 2),
+        "mapCenter:" + Math.round(_c.vw / 2),
+        "offset: [" + _offset[0] + ", " + _offset[1] + "]"
+      ];
+      console.log("[fachpartner-map] v" + VERSION, _lines.join("\n"));
+
+      // Selectable debug overlay (pointer-events: auto for copy)
+      var badge = document.createElement("pre");
+      badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:11px;color:#0f0;z-index:999999;pointer-events:auto;cursor:text;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.9);padding:10px 14px;border-radius:6px;line-height:1.5;margin:0;user-select:text;-webkit-user-select:text;";
+      badge.textContent = _lines.join("\n");
       document.body.appendChild(badge);
     });
   });
