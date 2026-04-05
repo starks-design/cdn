@@ -1,4 +1,4 @@
-/* Rennergy Fachpartner Map v2.2.09 — see README.md for changelog */
+/* Rennergy Fachpartner Map v2.2.10 — see README.md for changelog */
 (function () {
   "use strict";
   var MAPBOX_TOKEN =
@@ -453,24 +453,20 @@
     function computePadding() {
       if (!isHorizontalLayout()) return PAD_TABLET;
 
+      var mapEl = qs("#" + SEL.mapContainer);
       var sidebar = getScrollWrapper();
-      var sidebarWidth = (sidebar && sidebar.offsetWidth) || 0;
 
-      var containerMargin = 0;
-      try {
-        var computed = getComputedStyle(document.documentElement).getPropertyValue("--site--margin");
-        if (computed) {
-          var probe = document.createElement("div");
-          probe.style.position = "absolute";
-          probe.style.left = "-9999px";
-          probe.style.width = computed.trim();
-          document.body.appendChild(probe);
-          containerMargin = probe.offsetWidth || 0;
-          document.body.removeChild(probe);
-        }
-      } catch (_) {}
+      // Calculate actual sidebar overlap with map container
+      var sidebarOverlap = 0;
+      if (mapEl && sidebar) {
+        var mapRect = mapEl.getBoundingClientRect();
+        var sidebarRect = sidebar.getBoundingClientRect();
+        sidebarOverlap = Math.max(0, mapRect.right - sidebarRect.left);
+      } else if (sidebar) {
+        sidebarOverlap = sidebar.offsetWidth || 0;
+      }
 
-      var gutter = 16; // 1rem default
+      var gutter = 16;
       try {
         var g = getComputedStyle(document.documentElement).getPropertyValue("--site--gutter");
         if (g) {
@@ -493,22 +489,33 @@
 
       var pad = {
         top:    navHeight + 40,
-        right:  sidebarWidth + gutter * 2 + containerMargin,
+        right:  sidebarOverlap + gutter * 2,
         bottom: 80,
-        left:   containerMargin + leftExtra + gutter
+        left:   leftExtra + gutter
       };
       return pad;
     }
 
     function computeOffset() {
       if (isHorizontalLayout()) {
+        var mapEl = qs("#" + SEL.mapContainer);
+        if (!mapEl) return [0, 0];
+        var mapRect = mapEl.getBoundingClientRect();
+
         var sidebar = getScrollWrapper();
-        var sidebarW = (sidebar && sidebar.offsetWidth) || 0;
-        var mapContainer = qs("#" + SEL.mapContainer);
-        var mapW = (mapContainer && mapContainer.offsetWidth) || window.innerWidth;
-        var freeCenter = (mapW - sidebarW) / 2;
-        var mapCenter = mapW / 2;
-        return [Math.round(freeCenter - mapCenter), 0];
+        var overlap = 0;
+        if (sidebar) {
+          var sidebarRect = sidebar.getBoundingClientRect();
+          // Only count actual overlap between sidebar and map container
+          overlap = Math.max(0, mapRect.right - sidebarRect.left);
+        }
+
+        // Center of the visible map area (map minus sidebar overlap)
+        var visibleCenterX = mapRect.left + (mapRect.width - overlap) / 2;
+        // Mapbox measures offset from the map container center
+        var mapCenterX = mapRect.left + mapRect.width / 2;
+
+        return [Math.round(visibleCenterX - mapCenterX), 0];
       }
       var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
       return [0, -Math.round(vh * 0.25)];
@@ -1511,9 +1518,8 @@
       console.log("[fachpartner-map] BottomSheet ready");
     }
 
-    /* ── Hide global chat/comment widgets on mobile (Fachpartner page) ── */
-    function hideChatWidgetOnMobile() {
-      if (isHorizontalLayout()) return;
+    /* ── Mobile fixes: hide chat widgets + prevent Safari input zoom ── */
+    function injectMobileStyles() {
       var style = document.createElement("style");
       style.textContent = [
         "@media (max-width: " + HORIZONTAL_MIN_WIDTH + "px) {",
@@ -1537,6 +1543,13 @@
         "    display: none !important;",
         "    visibility: hidden !important;",
         "    pointer-events: none !important;",
+        "  }",
+        "}",
+        "",
+        "/* Prevent Safari auto-zoom on input focus (requires font-size >= 16px) */",
+        "@supports (-webkit-touch-callout: none) {",
+        "  [data-search-modul='plz'], .searchfield {",
+        "    font-size: 16px !important;",
         "  }",
         "}"
       ].join("\n");
@@ -1575,7 +1588,7 @@
       bindZoomTargets();
       setupDomObserver();
       setupBottomSheet();
-      hideChatWidgetOnMobile();
+      injectMobileStyles();
       window.addEventListener("resize", resizeRecenter);
 
       requestAnimationFrame(function () {
@@ -1585,7 +1598,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.09";
+      var VERSION = "2.2.10";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
