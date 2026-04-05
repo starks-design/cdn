@@ -1,96 +1,6 @@
-/**
- * Rennergy Fachpartner Map
- * Mapbox GL JS + CMS-basierte Fachpartner-Karte mit PLZ-Suche, Radius-Filter,
- * Autocomplete-Suggestions, Dark/Light-Mode und Cluster-Darstellung.
- *
- * Abhaengigkeiten (im <head>):
- *   - mapbox-gl v3.17.0 (CSS + JS)
- *   - Finsweet Attributes (fs-list)
- *
- * Version: 2.2.06
- *
- * Changelog v2.2.06 (2026-04-05):
- *   - Bottom Sheet ins Hauptscript integriert (war separates Embed).
- *     90%/25% Snap, Touch-Drag, Grabber-Tap-Toggle, Search-Focus schließt,
- *     Marker-Tap öffnet, Card-Tap schließt, Viewport-Resize.
- *
- * Changelog v2.2.05 (2026-04-05):
- *   - Card-Tap Event: zoom-target Klick dispatcht "fachpartner:card-tap"
- *     CustomEvent, damit das Bottom Sheet sich schliessen kann.
- *
- * Changelog v2.2.04 (2026-04-05):
- *   - DOM-Sort komplett deaktiviert (sortCardsByDistance entfernt).
- *     Finsweet-Nesting vertraegt kein DOM-Umsortieren.
- *     Pillen + Distanzberechnung bleiben aktiv.
- *
- * Changelog v2.2.03 (2026-04-05):
- *   - Fix Flipping: Sort pro Parent-Container (nicht Cross-Container),
- *     Distanz vorberechnet, filterSeq verhindert veraltete Geocode-Callbacks.
- *
- * Changelog v2.2.02 (2026-04-05):
- *   - Fix: DOM-Sort nur wenn Reihenfolge sich tatsaechlich aendert
- *     (verhindert visuelles Flackern bei gleicher Distanz)
- *
- * Changelog v2.2.01 (2026-04-05):
- *   - Fix: Stabile Sortierung (cardIndex Tiebreaker bei gleicher Distanz)
- *   - Fix: Suggestions schliessen bei Enter (suppressed-Flag)
- *   - Fix: Suggest-Hover nur auf generierte Nodes, nicht Template
- *
- * Changelog v2.2.0 (2026-04-05):
- *   - Entfernungs-Pille: data-search-modul="km" (Container) und
- *     data-search-modul="km-text" (Text) zeigen dynamisch die Distanz
- *     zum Suchzentrum an (z.B. "2.1 km", "42 km"). Pille nur sichtbar
- *     wenn ein Geocode-Referenzpunkt existiert (User hat Ort eingegeben).
- *   - Ergebnisse werden bei Radius-Suche nach Entfernung sortiert.
- *
- * Changelog v2.1.8 (2026-04-04):
- *   - Debug: ?debug=1 zeigt Version-Badge, Console-Log bei Init
- *
- * Changelog v2.1.7 (2026-04-04):
- *   - ergebnis_nr zeigt nur Zahl (kein "Fachpartner gefunden" Text)
- *   - Version-Badge: 3x schnell tippen auf Karte zeigt Version
- *
- * Changelog v2.1.6 (2026-04-04):
- *   - Versions-Badge oben rechts im Kartenbereich (nur Dev-Hilfe)
- *
- * Changelog v2.1.5 (2026-04-04):
- *   - stopPropagation auf zoom-target Click entfernt — blockierte
- *     Modal-Trigger auf Mobile (Event bubbelte nicht zum document)
- *
- * Changelog v2.1.4 (2026-04-03):
- *   - Search-Reset Button nur sichtbar wenn Text im Suchfeld steht
- *
- * Changelog v2.1.3 (2026-03-31):
- *   - Suggest hover fix: is--hover → is-hover (matching Webflow CSS class)
- *
- * Changelog v2.1.2 (2026-03-31):
- *   - Style-Block entfernt: search_wrapper, mapbox-wrapper und
- *     zoom-controls Fixes nativ in Webflow geloest
- *
- * Changelog v2.1.1 (2026-03-31):
- *   - Left padding erhoeht: + extra gutter fuer Abstand zum Container-Rand
- *
- * Changelog v2.1.0 (2026-03-31):
- *   - Dynamic fitBounds padding: computePadding() liest Sidebar-Breite,
- *     Container-Margin (--site--margin), Gutter (--site--gutter) und
- *     Zoom-Controls-Breite live aus dem DOM. Marker bleiben innerhalb
- *     der sichtbaren 9 Spalten (links der 3-Spalten-Sidebar).
- *   - Arrow-Key Navigation in Suggestions: ArrowUp/Down navigiert
- *     durch die Autocomplete-Liste wenn offen. Input-Wert wird live
- *     auf den Suggestion-Text aktualisiert. Enter waehlt aus.
- *     Erst wenn keine Suggestions offen → Fachpartner-Karten-Navigation.
- *   - CSS-Fix: .search_wrapper bekommt position:relative damit das
- *     absolute Suggest-Dropdown sich korrekt positioniert.
- *   - CSS-Fix: .zoom-controls.interaktive-karte an .mapbox-wrapper
- *     (position:relative) verankert statt am Flex-Parent. Verhindert
- *     Hochspringen bei Suggest-Dropdown oder "Keine Treffer".
- *   - Debug console.log aus Theme-Switch entfernt.
- */
+/* Rennergy Fachpartner Map v2.2.07 — see README.md for changelog */
 (function () {
   "use strict";
-
-  // ─── Constants ────────────────────────────────────────────────────────────────
-
   var MAPBOX_TOKEN =
     "pk.eyJ1IjoiYnlzdGFyayIsImEiOiJjbHc2amJna2IwMWNiMm5vOW9nM3AxYWg1In0.mzRxy5Sib2iJKeJh7XHmZg";
 
@@ -99,7 +9,6 @@
 
   var SOURCE_ID = "fachpartner";
 
-  // Animation durations (ms)
   var ANIM = {
     fly:        900,
     fitBounds:  700,
@@ -107,34 +16,26 @@
     clusterFly: 550
   };
 
-  // Layout breakpoint
   var HORIZONTAL_MIN_WIDTH = 1200;
 
-  // Fallback fit-bounds padding (used when dynamic calc fails)
   var PAD_DESKTOP_FALLBACK = { top: 120, right: 80, bottom: 120, left: 80 };
   var PAD_TABLET  = { top: 90,  right: 48, bottom: 90,  left: 48 };
 
-  // Cluster radius & max zoom
   var CLUSTER_RADIUS   = 90;
   var CLUSTER_MAX_ZOOM = 12;
 
-  // Jitter for overlapping markers
   var JITTER_MAX_METERS = 1800;
 
-  // Geocode concurrency
   var GEOCODE_CONCURRENCY = 10;
 
-  // DOM stabilization
   var STABLE_TIMEOUT_MS = 20000;
   var STABLE_DELAY_MS   = 700;
   var STABLE_POLL_MS    = 200;
 
-  // Debounce delays
   var SEARCH_DEBOUNCE_MS  = 180;
   var SUGGEST_DEBOUNCE_MS = 160;
   var DOM_CHANGE_DELAY_MS = 450;
 
-  // ─── Map Bubble Colors ──────────────────────────────────────────────────────
   var MAP_VARS = {
     bubble:      ["--_theme---b-50",       "#9B1B85"],
     bubbleHover: ["--_theme---b-40",       "#c24daf"],
@@ -145,7 +46,6 @@
     radiusLine:  ["--_theme---b-60",       "#7a1570"]
   };
 
-  // Selectors
   var SEL = {
     mapContainer:    "map",
     partnerItem:     '[modal-partner="item"]',
@@ -173,9 +73,6 @@
     suggestText:     '[data-suggest="text"]',
     itemLink:        'a[fs-list-element="item-link"]'
   };
-
-
-  // ─── Utilities ────────────────────────────────────────────────────────────────
 
   function onReady(fn) {
     if (document.readyState === "loading") {
@@ -252,9 +149,6 @@
 
   var EMPTY_FC = { type: "FeatureCollection", features: [] };
 
-
-  // ─── Geocoding ────────────────────────────────────────────────────────────────
-
   var geocodeCache = new Map();
 
   function geocode(query, types) {
@@ -319,9 +213,6 @@
       })
       .catch(function () { return []; });
   }
-
-
-  // ─── Theme / Colors ───────────────────────────────────────────────────────────
 
   function isDarkMode() {
     var html = document.documentElement;
@@ -395,16 +286,10 @@
     };
   }
 
-
-  // ─── Main App ─────────────────────────────────────────────────────────────────
-
   onReady(function () {
     if (!window.mapboxgl) return;
 
     mapboxgl.accessToken = MAPBOX_TOKEN;
-
-    // ── State ──
-
     var allGeoData = [];
     var geoData = [];
     var partnerElByIndex = new Map();
@@ -418,9 +303,6 @@
     var currentRadiusKm = null;
     var searchCenter = null;
     var currentStyle = isDarkMode() ? STYLE_DARK : STYLE_LIGHT;
-
-    // ── DOM refs ──
-
     var zoomInBtn      = qs(SEL.zoomIn);
     var zoomOutBtn     = qs(SEL.zoomOut);
     var zoomResetBtn   = qs(SEL.zoomReset);
@@ -435,9 +317,6 @@
     var suggestPanel   = qs(SEL.suggestPanel);
     var suggestList    = qs(SEL.suggestList);
     var suggestTemplate = qs(SEL.suggestTemplate);
-
-    // ── Map init ──
-
     var map = new mapboxgl.Map({
       container: SEL.mapContainer,
       style: currentStyle,
@@ -447,9 +326,6 @@
       pitch: 0,
       locale: "de-DE"
     });
-
-
-    // ─── DOM Helpers ────────────────────────────────────────────────────────────
 
     function getScrollWrapper() {
       return qs(SEL.sidebarScroll);
@@ -491,7 +367,6 @@
       var cards = qsa(SEL.partnerItem, root).filter(function (c) { return c.style.display !== "none"; });
       if (!cards.length) return;
 
-      // Distanz pro Karte vorberechnen (Map cardIndex → km)
       var distMap = new Map();
       cards.forEach(function (card) {
         var idx = parseInt(card.dataset.cardIndex, 10);
@@ -501,7 +376,6 @@
           : Infinity);
       });
 
-      // Pro Parent-Container separat sortieren (Finsweet hat 2 Instanzen)
       var parentGroups = new Map();
       cards.forEach(function (card) {
         var parent = card.parentNode;
@@ -517,7 +391,6 @@
           return diff !== 0 ? diff : parseInt(a.dataset.cardIndex, 10) - parseInt(b.dataset.cardIndex, 10);
         });
 
-        // Nur DOM anfassen wenn Reihenfolge sich aendert
         var needsMove = false;
         for (var i = 0; i < sorted.length; i++) {
           if (sorted[i] !== group[i]) { needsMove = true; break; }
@@ -580,12 +453,10 @@
       var sidebar = getScrollWrapper();
       var sidebarWidth = (sidebar && sidebar.offsetWidth) || 0;
 
-      // Read Lumos container margin from CSS variable
       var containerMargin = 0;
       try {
         var computed = getComputedStyle(document.documentElement).getPropertyValue("--site--margin");
         if (computed) {
-          // Create a temporary element to resolve clamp() / calc() to px
           var probe = document.createElement("div");
           probe.style.position = "absolute";
           probe.style.left = "-9999px";
@@ -596,7 +467,6 @@
         }
       } catch (_) {}
 
-      // Read gutter
       var gutter = 16; // 1rem default
       try {
         var g = getComputedStyle(document.documentElement).getPropertyValue("--site--gutter");
@@ -611,41 +481,28 @@
         }
       } catch (_) {}
 
-      // Nav height (~80px typical)
       var nav = qs(".nav_wrap") || qs("nav") || qs(".w-nav");
       var navHeight = (nav && nav.offsetHeight) || 80;
 
-      // Extra left padding for zoom controls (~80px width + gap)
       var zoomControls = qs(".zoom-controls.interaktive-karte");
       var zoomWidth = (zoomControls && zoomControls.offsetWidth) || 0;
       var leftExtra = zoomWidth ? zoomWidth + gutter * 2 : gutter;
 
-      // The map is fullscreen but markers should stay within the
-      // Lumos container area left of the sidebar (4 columns wide).
-      // containerMargin = space from viewport edge to container start.
-      // sidebarWidth = the .search_results_wrapper width (read live).
-      // We add gutter between content area and sidebar.
       var pad = {
         top:    navHeight + 40,
         right:  sidebarWidth + gutter * 2 + containerMargin,
         bottom: 80,
         left:   containerMargin + leftExtra + gutter
       };
-
-      // Debug: uncomment to check values
-      // console.log("[MAP] computePadding", pad, {sidebarWidth, containerMargin, gutter, zoomWidth, navHeight});
-
       return pad;
     }
 
     function computeOffset() {
       if (isHorizontalLayout()) {
-        // Dynamisch: Mitte des freien Kartenbereichs berechnen
         var sidebar = getScrollWrapper();
         var sidebarW = (sidebar && sidebar.offsetWidth) || 0;
         var mapContainer = qs("#" + SEL.mapContainer);
         var mapW = (mapContainer && mapContainer.offsetWidth) || window.innerWidth;
-        // Freier Bereich = Kartenbreite - Sidebar, Offset = halbe Sidebar
         var freeCenter = (mapW - sidebarW) / 2;
         var mapCenter = mapW / 2;
         return [Math.round(freeCenter - mapCenter), 0];
@@ -661,9 +518,6 @@
       var km = parseFloat(m[1]);
       return isNaN(km) ? null : km;
     }
-
-
-    // ─── German labels ──────────────────────────────────────────────────────────
 
     function applyGermanLabels() {
       if (!map.isStyleLoaded()) return;
@@ -685,9 +539,6 @@
         try { map.setLayoutProperty(layer.id, "text-field", newTf); } catch (_) {}
       });
     }
-
-
-    // ─── Map layers ─────────────────────────────────────────────────────────────
 
     function ensureRadiusLayers() {
       var srcId = "search-radius";
@@ -838,9 +689,6 @@
       try { map.triggerRepaint(); } catch (_) {}
     }
 
-
-    // ─── Feature states ─────────────────────────────────────────────────────────
-
     function clearFeatureStates() {
       if (!map.getSource(SOURCE_ID)) {
         hoveredFeatureId = null;
@@ -856,9 +704,6 @@
       hoveredFeatureId = null;
       activeFeatureId = null;
     }
-
-
-    // ─── Navigation ─────────────────────────────────────────────────────────────
 
     function flyToWithSidebar(lng, lat, targetZoom) {
       map.easeTo({
@@ -952,9 +797,6 @@
       requestAnimationFrame(function () { flyToWithSidebar(lng, lat, zoom); });
     }
 
-
-    // ─── Data building ──────────────────────────────────────────────────────────
-
     async function buildDataFromDOM() {
       var root = resolveRoot();
       var partnerEls = qsa(SEL.partnerItem, root);
@@ -1041,9 +883,6 @@
       if (!currentQuery) fitAll(false);
     }
 
-
-    // ─── Filtering ──────────────────────────────────────────────────────────────
-
     function applyCardsVisibility(allowedSet) {
       qsa(SEL.partnerItem, resolveRoot()).forEach(function (card) {
         var idx = parseInt(card.dataset.cardIndex, 10);
@@ -1089,7 +928,6 @@
           return String(p.city).toLowerCase().includes(qLower) || String(p.zip).startsWith(digits);
         });
 
-        // Geocode im Hintergrund für Distanz-Pillen (kein Filter, nur Anzeige)
         var seq = ++filterSeq;
         geocodeQuery(qRaw).then(function (c) {
           if (seq !== filterSeq) return;
@@ -1138,9 +976,6 @@
       updateNoResults();
       fitToRadius(center, radius, true);
     }
-
-
-    // ─── Suggestions ────────────────────────────────────────────────────────────
 
     var suggestState = { items: [], activeIndex: -1, open: false, suppressed: false };
 
@@ -1227,9 +1062,6 @@
       });
     }, SUGGEST_DEBOUNCE_MS);
 
-
-    // ─── Card navigation ────────────────────────────────────────────────────────
-
     function getVisibleCardIndices() {
       return geoData.map(function (x) { return x.cardIndex; });
     }
@@ -1250,15 +1082,11 @@
       zoomToCardIndex(visible[nextIdx], 11);
     }
 
-
-    // ─── Keyboard handling ──────────────────────────────────────────────────────
-
     function handleSearchKeydown(e) {
       if (document.activeElement !== searchInput) return;
 
       var key = e.key;
 
-      // Enter: select suggestion or execute search
       if (key === "Enter") {
         e.preventDefault();
         if (suggestState.open && suggestState.items.length && suggestState.activeIndex >= 0) {
@@ -1271,23 +1099,19 @@
         return;
       }
 
-      // Escape: close suggestions
       if (key === "Escape") {
         e.preventDefault();
         hideSuggestions();
         return;
       }
 
-      // Arrow keys: navigate suggestions if open, otherwise navigate cards
       if (key === "ArrowDown") {
         e.preventDefault();
         if (suggestState.open && suggestState.items.length) {
-          // Move down in suggestions list
           var nextIdx = suggestState.activeIndex + 1;
           if (nextIdx >= suggestState.items.length) nextIdx = 0;
           suggestState.activeIndex = nextIdx;
           setSuggestHover(nextIdx);
-          // Update input with selected suggestion text
           var item = suggestState.items[nextIdx];
           if (item && searchInput) searchInput.value = item.label;
         } else {
@@ -1300,12 +1124,10 @@
       if (key === "ArrowUp") {
         e.preventDefault();
         if (suggestState.open && suggestState.items.length) {
-          // Move up in suggestions list
           var prevIdx = suggestState.activeIndex - 1;
           if (prevIdx < 0) prevIdx = suggestState.items.length - 1;
           suggestState.activeIndex = prevIdx;
           setSuggestHover(prevIdx);
-          // Update input with selected suggestion text
           var prevItem = suggestState.items[prevIdx];
           if (prevItem && searchInput) searchInput.value = prevItem.label;
         } else {
@@ -1335,9 +1157,6 @@
         if (zoomResetBtn) zoomResetBtn.classList.remove("is-active");
       }
     }
-
-
-    // ─── Controls setup ─────────────────────────────────────────────────────────
 
     function setupControls() {
       if (zoomInBtn) zoomInBtn.addEventListener("click", function () { zoomRelative(+1); });
@@ -1420,9 +1239,6 @@
       });
     }
 
-
-    // ─── Map events ─────────────────────────────────────────────────────────────
-
     function bindMapEvents() {
       map.on("click", "fachpartner-clusters", function (e) {
         var feature = e.features && e.features[0];
@@ -1474,15 +1290,11 @@
       map.on("mouseleave", "fachpartner-clusters", function () { map.getCanvas().style.cursor = ""; });
     }
 
-
-    // ─── Zoom targets ───────────────────────────────────────────────────────────
-
     function bindZoomTargets() {
       qsa(SEL.zoomTarget, resolveRoot()).forEach(function (target) {
         if (target.dataset._bound === "1") return;
         target.dataset._bound = "1";
 
-        // Bind modal triggers inside this zoom-target directly
         qsa("[data-modal-trigger]", target).forEach(function (trigger) {
           if (trigger.dataset._modalBound === "1") return;
           trigger.dataset._modalBound = "1";
@@ -1507,9 +1319,6 @@
         });
       });
     }
-
-
-    // ─── Theme observer ─────────────────────────────────────────────────────────
 
     var isStyleSwitching = false;
 
@@ -1564,9 +1373,6 @@
       obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
     }
 
-
-    // ─── DOM observer ───────────────────────────────────────────────────────────
-
     function setupDomObserver() {
       var debouncedRebuild = debounce(async function () {
         if (isStyleSwitching) return;
@@ -1592,9 +1398,6 @@
       }
       return lastCount;
     }
-
-
-    // ─── Bottom Sheet (mobile) ────────────────────────────────────────────────
 
     var sheet = {
       OPEN: 0.90,
@@ -1665,19 +1468,16 @@
         sheetSnap(sheet.frac, dt > 0 ? -(dy / dt) : 0);
       }, { passive: true });
 
-      // Suchfeld-Focus → Sheet einklappen
       if (searchInput) {
         searchInput.addEventListener("focus", function () {
           if (!isHorizontalLayout() && sheetIsOpen()) sheetClose();
         });
       }
 
-      // Karten-Tap → Sheet einklappen
       document.addEventListener("fachpartner:card-tap", function () {
         if (!isHorizontalLayout()) sheetClose();
       });
 
-      // Marker-Tap auf Karte → Sheet öffnen (is--active Klasse)
       var sheetObs = new MutationObserver(function (muts) {
         if (isHorizontalLayout()) return;
         for (var i = 0; i < muts.length; i++) {
@@ -1695,7 +1495,6 @@
         sheetObs.observe(resultsWrap, { attributes: true, attributeFilter: ["class"], subtree: true });
       }
 
-      // Viewport resize
       function sheetRecalc() {
         if (isHorizontalLayout()) { sheet.el.style.height = ""; sheet.el.style.transition = ""; return; }
         if (!sheet.dragging) sheetSet(sheet.frac, true);
@@ -1705,9 +1504,6 @@
 
       console.log("[fachpartner-map] BottomSheet ready");
     }
-
-
-    // ─── Boot ───────────────────────────────────────────────────────────────────
 
     map.on("load", async function () {
       setupControls();
@@ -1738,8 +1534,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      // Version debug — ?debug=1 zeigt Badge dauerhaft
-      var VERSION = "2.2.06";
+      var VERSION = "2.2.07";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
