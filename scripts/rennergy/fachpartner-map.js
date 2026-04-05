@@ -1431,10 +1431,10 @@
 
     var sheet = {
       OPEN: 0.90,
-      CLOSED: 0.25,
+      CLOSED: 0,
       TRANS: "height 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
       TAP_THRESH: 8,
-      el: null, grabber: null, frac: 0.25,
+      el: null, grabber: null, frac: 0,
       dragging: false, dragDist: 0, startY: 0, startH: 0, lastY: 0, lastT: 0
     };
 
@@ -1628,7 +1628,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.22";
+      var VERSION = "2.2.23";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
