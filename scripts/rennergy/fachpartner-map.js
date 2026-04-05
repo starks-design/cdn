@@ -7,7 +7,12 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.2.0
+ * Version: 2.2.01
+ *
+ * Changelog v2.2.01 (2026-04-05):
+ *   - Fix: Stabile Sortierung (cardIndex Tiebreaker bei gleicher Distanz)
+ *   - Fix: Suggestions schliessen bei Enter (suppressed-Flag)
+ *   - Fix: Suggest-Hover nur auf generierte Nodes, nicht Template
  *
  * Changelog v2.2.0 (2026-04-05):
  *   - Entfernungs-Pille: data-search-modul="km" (Container) und
@@ -1573,7 +1578,7 @@
       setSearchNoneVisible(false);
 
       // Version debug — ?debug=1 zeigt Badge dauerhaft
-      var VERSION = "2.2.0";
+      var VERSION = "2.2.01";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
