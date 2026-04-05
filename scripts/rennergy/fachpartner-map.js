@@ -1571,16 +1571,19 @@
 
       currentRadiusKm = parseRadiusKm();
 
+      // Set map padding BEFORE buildDataFromDOM (which calls fitAll)
+      var _pad = updateMapPadding();
+
       await waitForStableItems();
       await buildDataFromDOM();
+
+      // Re-apply padding after DOM is stable (sidebar may have changed)
+      _pad = updateMapPadding();
 
       bindZoomTargets();
       setupDomObserver();
       setupBottomSheet();
       injectMobileStyles();
-
-      // Set map padding to constrain visible area to the container (green box)
-      var _pad = updateMapPadding();
       window.addEventListener("resize", resizeRecenter);
 
       requestAnimationFrame(function () {
@@ -1590,7 +1593,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.17";
+      var VERSION = "2.2.18";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
