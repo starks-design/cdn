@@ -7,9 +7,9 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.1.9
+ * Version: 2.2.0
  *
- * Changelog v2.1.9 (2026-04-05):
+ * Changelog v2.2.0 (2026-04-05):
  *   - Entfernungs-Pille: data-search-modul="km" (Container) und
  *     data-search-modul="km-text" (Text) zeigen dynamisch die Distanz
  *     zum Suchzentrum an (z.B. "2.1 km", "42 km"). Pille nur sichtbar
@@ -1566,7 +1566,7 @@
       setSearchNoneVisible(false);
 
       // Version debug — ?debug=1 zeigt Badge dauerhaft
-      var VERSION = "2.1.9";
+      var VERSION = "2.2.0";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
