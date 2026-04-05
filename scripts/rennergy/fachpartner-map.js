@@ -7,7 +7,14 @@
  *   - mapbox-gl v3.17.0 (CSS + JS)
  *   - Finsweet Attributes (fs-list)
  *
- * Version: 2.1.8
+ * Version: 2.1.9
+ *
+ * Changelog v2.1.9 (2026-04-05):
+ *   - Entfernungs-Pille: data-search-modul="km" (Container) und
+ *     data-search-modul="km-text" (Text) zeigen dynamisch die Distanz
+ *     zum Suchzentrum an (z.B. "2.1 km", "42 km"). Pille nur sichtbar
+ *     wenn ein Geocode-Referenzpunkt existiert (User hat Ort eingegeben).
+ *   - Ergebnisse werden bei Radius-Suche nach Entfernung sortiert.
  *
  * Changelog v2.1.8 (2026-04-04):
  *   - Debug: ?debug=1 zeigt Version-Badge, Console-Log bei Init
@@ -129,6 +136,8 @@
     searchInput:     '[data-search-modul="plz"], .searchfield',
     radiusSelect:    '[data-search-modul="radius"]',
     resultInfo:      '[data-search-modul="ergebnis_nr"]',
+    kmPill:          '[data-search-modul="km"]',
+    kmText:          '[data-search-modul="km-text"]',
     searchNone:      ".search_none",
     zoomTarget:      ".zoom-target",
     suggestPanel:    '[data-suggest="panel"]',
@@ -445,6 +454,49 @@
         if (!partners.length) { ad.style.display = ""; return; }
         var anyVisible = Array.from(partners).some(function (p) { return p.style.display !== "none"; });
         ad.style.display = anyVisible ? "" : "none";
+      });
+    }
+
+    function sortCardsByDistance(center) {
+      if (!center) return;
+      var root = resolveRoot();
+      var cards = qsa(SEL.partnerItem, root).filter(function (c) { return c.style.display !== "none"; });
+      if (!cards.length) return;
+
+      cards.sort(function (a, b) {
+        var gA = allGeoData.find(function (p) { return p.cardIndex === parseInt(a.dataset.cardIndex, 10); });
+        var gB = allGeoData.find(function (p) { return p.cardIndex === parseInt(b.dataset.cardIndex, 10); });
+        if (!gA || !gB) return 0;
+        return distanceKm(gA.latitude, gA.longitude, center.lat, center.lng)
+             - distanceKm(gB.latitude, gB.longitude, center.lat, center.lng);
+      });
+
+      cards.forEach(function (card) {
+        card.parentNode.appendChild(card);
+      });
+    }
+
+    function updateDistancePills() {
+      var root = resolveRoot();
+      qsa(SEL.partnerItem, root).forEach(function (card) {
+        var pill = card.querySelector(SEL.kmPill);
+        var text = card.querySelector(SEL.kmText);
+        if (!pill) return;
+
+        if (!searchCenter) {
+          pill.style.display = "none";
+          return;
+        }
+
+        var idx = parseInt(card.dataset.cardIndex, 10);
+        var geo = allGeoData.find(function (p) { return p.cardIndex === idx; });
+        if (!geo) { pill.style.display = "none"; return; }
+
+        var km = distanceKm(geo.latitude, geo.longitude, searchCenter.lat, searchCenter.lng);
+        var label = km < 1 ? km.toFixed(1) + " km" : Math.round(km) + " km";
+
+        pill.style.display = "";
+        if (text) text.textContent = label;
       });
     }
 
@@ -930,6 +982,7 @@
 
       addOrUpdateSource();
       updateResultInfo();
+      updateDistancePills();
       updateNoResults();
       updateAussendienstVisibility();
 
@@ -958,6 +1011,7 @@
 
       if (!qRaw) {
         geoData = allGeoData.slice();
+        searchCenter = null;
         applyCardsVisibility(null);
         clearFeatureStates();
         lastOpen = null;
@@ -965,6 +1019,7 @@
         addOrUpdateSource();
         setRadiusOverlay(null, null);
         updateResultInfo();
+        updateDistancePills();
         updateNoResults();
         fitAll(true);
         hideSuggestions();
@@ -977,6 +1032,7 @@
         var qLower = qRaw.toLowerCase();
         var digits = sanitizePlz(qRaw);
 
+        searchCenter = null;
         geoData = allGeoData.filter(function (p) {
           if (/^\d+$/.test(qRaw) && digits) return String(p.zip).startsWith(digits);
           return String(p.city).toLowerCase().includes(qLower) || String(p.zip).startsWith(digits);
@@ -986,6 +1042,7 @@
         addOrUpdateSource();
         setRadiusOverlay(null, null);
         updateResultInfo();
+        updateDistancePills();
         updateNoResults();
         if (geoData.length) fitAll(true);
         return;
@@ -994,10 +1051,12 @@
       var center = await geocodeQuery(qRaw);
       if (!center) {
         geoData = [];
+        searchCenter = null;
         applyCardsVisibility(new Set());
         addOrUpdateSource();
         setRadiusOverlay(null, null);
         updateResultInfo();
+        updateDistancePills();
         updateNoResults();
         return;
       }
@@ -1007,10 +1066,17 @@
         return distanceKm(p.latitude, p.longitude, center.lat, center.lng) <= radius;
       });
 
+      geoData.sort(function (a, b) {
+        return distanceKm(a.latitude, a.longitude, center.lat, center.lng)
+             - distanceKm(b.latitude, b.longitude, center.lat, center.lng);
+      });
+
       applyCardsVisibility(new Set(geoData.map(function (p) { return p.cardIndex; })));
+      sortCardsByDistance(center);
       addOrUpdateSource();
       setRadiusOverlay(center, radius);
       updateResultInfo();
+      updateDistancePills();
       updateNoResults();
       fitToRadius(center, radius, true);
     }
@@ -1495,7 +1561,7 @@
       setSearchNoneVisible(false);
 
       // Version debug — ?debug=1 zeigt Badge dauerhaft
-      var VERSION = "2.1.8";
+      var VERSION = "2.1.9";
       console.log("[fachpartner-map] v" + VERSION);
       if (new URLSearchParams(location.search).get("debug") === "1") {
         var badge = document.createElement("div");
