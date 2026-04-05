@@ -1599,26 +1599,32 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.14";
+      var VERSION = "2.2.15";
       var _g = computeGridLayout();
-      console.log("[fachpartner-map] v" + VERSION, {
-        viewport: _g.vw,
+      var _debugInfo = {
+        vw: _g.vw,
         margin: Math.round(_g.margin),
         gutter: Math.round(_g.gutter),
         containerW: Math.round(_g.containerW),
         containerLeft: Math.round(_g.containerLeft),
         colW: Math.round(_g.colW * 10) / 10,
         mapAreaW: Math.round(_g.mapAreaW),
-        visibleCenter: Math.round(_g.containerLeft + _g.mapAreaW / 2),
+        visCenter: Math.round(_g.containerLeft + _g.mapAreaW / 2),
         mapCenter: Math.round(_g.vw / 2),
         offset: computeOffset()
-      });
-      if (new URLSearchParams(location.search).get("debug") === "1") {
-        var badge = document.createElement("div");
-        badge.textContent = "v" + VERSION;
-        badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:14px;color:#ff0000;z-index:999999;pointer-events:none;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.8);padding:4px 8px;border-radius:4px;";
-        document.body.appendChild(badge);
-      }
+      };
+      console.log("[fachpartner-map] v" + VERSION, _debugInfo);
+
+      // Always show debug overlay
+      var badge = document.createElement("div");
+      badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:11px;color:#0f0;z-index:999999;pointer-events:none;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.85);padding:8px 12px;border-radius:6px;line-height:1.6;max-width:320px;white-space:pre;";
+      badge.textContent = "v" + VERSION + "\n"
+        + "vw:" + _debugInfo.vw + "  margin:" + _debugInfo.margin + "  gutter:" + _debugInfo.gutter + "\n"
+        + "containerW:" + _debugInfo.containerW + "  left:" + _debugInfo.containerLeft + "\n"
+        + "colW:" + _debugInfo.colW + "  mapArea:" + _debugInfo.mapAreaW + "\n"
+        + "visCenter:" + _debugInfo.visCenter + "  mapCenter:" + _debugInfo.mapCenter + "\n"
+        + "offset: [" + _debugInfo.offset[0] + ", " + _debugInfo.offset[1] + "]";
+      document.body.appendChild(badge);
     });
   });
 })();
