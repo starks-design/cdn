@@ -1032,17 +1032,22 @@
         var qLower = qRaw.toLowerCase();
         var digits = sanitizePlz(qRaw);
 
-        searchCenter = null;
         geoData = allGeoData.filter(function (p) {
           if (/^\d+$/.test(qRaw) && digits) return String(p.zip).startsWith(digits);
           return String(p.city).toLowerCase().includes(qLower) || String(p.zip).startsWith(digits);
+        });
+
+        // Geocode im Hintergrund für Distanz-Pillen (kein Filter, nur Anzeige)
+        geocodeQuery(qRaw).then(function (c) {
+          searchCenter = c || null;
+          updateDistancePills();
+          if (c) sortCardsByDistance(c);
         });
 
         applyCardsVisibility(new Set(geoData.map(function (p) { return p.cardIndex; })));
         addOrUpdateSource();
         setRadiusOverlay(null, null);
         updateResultInfo();
-        updateDistancePills();
         updateNoResults();
         if (geoData.length) fitAll(true);
         return;
