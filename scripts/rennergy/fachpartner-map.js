@@ -487,11 +487,11 @@
 
     function updateMapPadding() {
       if (!isHorizontalLayout()) {
-        // Mobile: nav top + bottom sheet (closed = 25% of viewport)
+        // Mobile: nav top + current sheet height as bottom padding
         var nav = qs(".nav_wrap") || qs("nav") || qs(".w-nav");
         var navH = (nav && nav.offsetHeight) || 80;
         var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-        var sheetH = Math.round(vh * sheet.CLOSED);
+        var sheetH = Math.round(vh * sheet.frac);
         var padding = { top: navH + 20, right: 0, bottom: sheetH + 20, left: 0 };
         map.setPadding(padding);
         return padding;
@@ -1431,7 +1431,7 @@
 
     var sheet = {
       OPEN: 0.90,
-      CLOSED: 0,
+      CLOSED: 0.25,
       TRANS: "height 0.35s cubic-bezier(0.32, 0.72, 0, 1)",
       TAP_THRESH: 8,
       el: null, grabber: null, frac: 0,
@@ -1464,7 +1464,8 @@
       sheet.grabber = qs(SEL.mobileGrabber);
       if (!sheet.el || !sheet.grabber) return;
 
-      if (!isHorizontalLayout()) sheetSet(sheet.CLOSED, false);
+      // Start fully hidden (0); after first interaction, CLOSED (0.25) is the minimum
+      if (!isHorizontalLayout()) sheetSet(0, false);
 
       sheet.grabber.addEventListener("touchstart", function (e) {
         if (isHorizontalLayout()) return;
@@ -1628,7 +1629,7 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.23";
+      var VERSION = "2.2.24";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
       var _mw = qs(".modal-wrapper");
