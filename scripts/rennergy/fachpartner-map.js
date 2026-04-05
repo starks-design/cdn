@@ -466,7 +466,11 @@
     }
 
     /**
-     * Hybrid approach: container from CSS vars, sidebar from DOM.
+     * Use map.setPadding() to define the "visible area" (green box).
+     * Mapbox then centers ALL operations (easeTo, fitBounds, flyTo)
+     * within the padded area automatically.
+     *
+     * Container position: CSS vars. Sidebar position: DOM measurement.
      */
     function computeContainerLeft() {
       var vw = window.innerWidth;
@@ -481,44 +485,32 @@
       return sidebar ? sidebar.getBoundingClientRect().left : null;
     }
 
-    function computePadding() {
-      if (!isHorizontalLayout()) return PAD_TABLET;
+    function updateMapPadding() {
+      if (!isHorizontalLayout()) {
+        map.setPadding({ top: 0, right: 0, bottom: 0, left: 0 });
+        return;
+      }
 
       var c = computeContainerLeft();
       var sLeft = computeSidebarLeft();
 
       var nav = qs(".nav_wrap") || qs("nav") || qs(".w-nav");
       var navHeight = (nav && nav.offsetHeight) || 80;
-      var zoomControls = qs(".zoom-controls.interaktive-karte");
-      var zoomWidth = (zoomControls && zoomControls.offsetWidth) || 0;
-      var gutter = measureCSSVar("--site--gutter") || 16;
 
-      var rightPad = sLeft !== null
-        ? Math.max(gutter, c.vw - sLeft)
-        : Math.max(gutter, c.containerW * 4 / 12);
+      var padLeft = Math.round(c.containerLeft);
+      var padRight = sLeft !== null
+        ? Math.round(c.vw - sLeft)
+        : Math.round(c.containerW * 4 / 12 + c.containerLeft);
 
-      return {
+      var padding = {
         top:    navHeight + 40,
-        right:  rightPad,
+        right:  padRight,
         bottom: 80,
-        left:   Math.max(gutter, c.containerLeft + (zoomWidth ? zoomWidth + gutter : gutter))
+        left:   padLeft
       };
-    }
 
-    function computeOffset() {
-      if (isHorizontalLayout()) {
-        var c = computeContainerLeft();
-        var sLeft = computeSidebarLeft();
-
-        // Visible area = from container left to sidebar left
-        var visibleRight = sLeft !== null ? sLeft : (c.containerLeft + c.containerW * 8 / 12);
-        var visibleCenterX = (c.containerLeft + visibleRight) / 2;
-        var mapCenterX = c.vw / 2;
-
-        return [Math.round(visibleCenterX - mapCenterX), 0];
-      }
-      var vh = (window.visualViewport && window.visualViewport.height) || window.innerHeight;
-      return [0, -Math.round(vh * 0.25)];
+      map.setPadding(padding);
+      return padding;
     }
 
     function parseRadiusKm() {
@@ -722,7 +714,6 @@
         duration: ANIM.fly,
         curve: 1,
         easing: function (t) { return 1 - Math.pow(1 - t, 3); },
-        offset: computeOffset(),
         essential: true
       });
     }
@@ -738,7 +729,6 @@
 
       if (lastOpen) {
         opts.center = [lastOpen.lng, lastOpen.lat];
-        opts.offset = computeOffset();
       } else {
         opts.center = map.getCenter();
       }
@@ -754,8 +744,7 @@
         map.easeTo({
           center: [p.longitude, p.latitude],
           zoom: 9,
-          duration: animate ? ANIM.fly : 0,
-          offset: computeOffset()
+          duration: animate ? ANIM.fly : 0
         });
         return;
       }
@@ -763,7 +752,6 @@
       var bounds = new mapboxgl.LngLatBounds();
       geoData.forEach(function (p) { bounds.extend([p.longitude, p.latitude]); });
       map.fitBounds(bounds, {
-        padding: computePadding(),
         duration: animate ? ANIM.fitBounds : 0,
         linear: false
       });
@@ -775,7 +763,6 @@
       var bounds = new mapboxgl.LngLatBounds();
       circle.features[0].geometry.coordinates[0].forEach(function (c) { bounds.extend(c); });
       map.fitBounds(bounds, {
-        padding: computePadding(),
         duration: animate ? ANIM.fitBounds : 0,
         linear: false
       });
@@ -1557,8 +1544,9 @@
       document.head.appendChild(style);
     }
 
-    /* ── Resize handler: re-center map on active partner or search ── */
+    /* ── Resize handler: update padding + re-center ── */
     var resizeRecenter = debounce(function () {
+      updateMapPadding();
       if (lastOpen) {
         flyToWithSidebar(lastOpen.lng, lastOpen.lat, lastOpen.zoom);
       } else if (searchCenter && currentRadiusKm) {
@@ -1590,6 +1578,9 @@
       setupDomObserver();
       setupBottomSheet();
       injectMobileStyles();
+
+      // Set map padding to constrain visible area to the container (green box)
+      var _pad = updateMapPadding();
       window.addEventListener("resize", resizeRecenter);
 
       requestAnimationFrame(function () {
@@ -1599,10 +1590,9 @@
       hideSuggestions();
       setSearchNoneVisible(false);
 
-      var VERSION = "2.2.16";
+      var VERSION = "2.2.17";
       var _c = computeContainerLeft();
       var _sLeft = computeSidebarLeft();
-      var _offset = computeOffset();
       var _mw = qs(".modal-wrapper");
       var _mg = qs(SEL.modalGroup);
       var _mwRect = _mw ? _mw.getBoundingClientRect() : null;
@@ -1612,19 +1602,15 @@
         "v" + VERSION,
         "--- CSS vars ---",
         "vw:" + _c.vw + " margin:" + Math.round(_c.margin) + " maxW:" + _c.maxW,
-        "containerW:" + Math.round(_c.containerW) + " containerLeft:" + Math.round(_c.containerLeft),
-        "--- DOM rects ---",
-        ".modal-wrapper: " + (_mwRect ? "l:" + Math.round(_mwRect.left) + " w:" + Math.round(_mwRect.width) + " r:" + Math.round(_mwRect.right) : "NOT FOUND"),
-        ".modal-group:   " + (_mgRect ? "l:" + Math.round(_mgRect.left) + " w:" + Math.round(_mgRect.width) + " r:" + Math.round(_mgRect.right) : "NOT FOUND"),
-        "sidebarLeft(DOM): " + (_sLeft !== null ? Math.round(_sLeft) : "null"),
-        "--- result ---",
-        "visCenter:" + Math.round((_c.containerLeft + (_sLeft || _c.containerLeft + _c.containerW)) / 2),
-        "mapCenter:" + Math.round(_c.vw / 2),
-        "offset: [" + _offset[0] + ", " + _offset[1] + "]"
+        "containerW:" + Math.round(_c.containerW) + " cLeft:" + Math.round(_c.containerLeft),
+        "--- DOM ---",
+        ".modal-wrapper: " + (_mwRect ? "l:" + Math.round(_mwRect.left) + " w:" + Math.round(_mwRect.width) : "?"),
+        ".modal-group:   " + (_mgRect ? "l:" + Math.round(_mgRect.left) + " w:" + Math.round(_mgRect.width) : "?"),
+        "--- map.setPadding ---",
+        JSON.stringify(_pad)
       ];
       console.log("[fachpartner-map] v" + VERSION, _lines.join("\n"));
 
-      // Selectable debug overlay (pointer-events: auto for copy)
       var badge = document.createElement("pre");
       badge.style.cssText = "position:fixed;top:8px;right:8px;font-size:11px;color:#0f0;z-index:999999;pointer-events:auto;cursor:text;font-family:monospace;font-weight:bold;background:rgba(0,0,0,0.9);padding:10px 14px;border-radius:6px;line-height:1.5;margin:0;user-select:text;-webkit-user-select:text;";
       badge.textContent = _lines.join("\n");
