@@ -39,6 +39,11 @@ Verwendet die offiziellen Lumos Framework Scripts. Kein eigener Code noetig.
 
 ### Changelog
 
+**v2.2.08** (2026-04-05)
+- Fix: Bottom Sheet Selektoren (modalGroup, mobileGrabber) fehlten nach Kommentar-Bereinigung.
+- Fix: DOM-Observer löst keinen Re-Zoom mehr aus (`noZoom` Flag). Karte springt nicht mehr zurück beim Rauszoomen nach Radius-Suche.
+- Fix: Bubbles außerhalb des Radius werden korrekt gefiltert (kein Re-Filter durch DOM-Observer).
+
 **v2.2.07** (2026-04-05)
 - Alle Inline-Kommentare und Changelog aus dem Script entfernt. Changelog nur noch im README.
 

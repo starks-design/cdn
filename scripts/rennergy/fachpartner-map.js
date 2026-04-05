@@ -1,4 +1,4 @@
-/* Rennergy Fachpartner Map v2.2.07 — see README.md for changelog */
+/* Rennergy Fachpartner Map v2.2.08 — see README.md for changelog */
 (function () {
   "use strict";
   var MAPBOX_TOKEN =
@@ -71,7 +71,10 @@
     suggestList:     '[data-suggest="list"]',
     suggestTemplate: '[data-suggest="template"]',
     suggestText:     '[data-suggest="text"]',
-    itemLink:        'a[fs-list-element="item-link"]'
+    itemLink:        'a[fs-list-element="item-link"]',
+    modalGroup:      ".modal-group",
+    mobileGrabber:   ".mobile_grabber",
+    modal:           ".modal"
   };
 
   function onReady(fn) {
@@ -897,6 +900,7 @@
       var qRaw = sanitizeQuery(rawValue);
       currentQuery = qRaw;
       var noSuggest = opts && opts.noSuggest;
+      var noZoom = opts && opts.noZoom;
 
       if (!noSuggest) debouncedSuggest(qRaw);
 
@@ -912,7 +916,7 @@
         updateResultInfo();
         updateDistancePills();
         updateNoResults();
-        fitAll(true);
+        if (!noZoom) fitAll(true);
         hideSuggestions();
         return;
       }
@@ -928,19 +932,21 @@
           return String(p.city).toLowerCase().includes(qLower) || String(p.zip).startsWith(digits);
         });
 
-        var seq = ++filterSeq;
-        geocodeQuery(qRaw).then(function (c) {
-          if (seq !== filterSeq) return;
-          searchCenter = c || null;
-          updateDistancePills();
-        });
+        if (!noZoom) {
+          var seq = ++filterSeq;
+          geocodeQuery(qRaw).then(function (c) {
+            if (seq !== filterSeq) return;
+            searchCenter = c || null;
+            updateDistancePills();
+          });
+        }
 
         applyCardsVisibility(new Set(geoData.map(function (p) { return p.cardIndex; })));
         addOrUpdateSource();
         setRadiusOverlay(null, null);
         updateResultInfo();
         updateNoResults();
-        if (geoData.length) fitAll(true);
+        if (!noZoom && geoData.length) fitAll(true);
         return;
       }
 
@@ -974,7 +980,7 @@
       updateResultInfo();
       updateDistancePills();
       updateNoResults();
-      fitToRadius(center, radius, true);
+      if (!noZoom) fitToRadius(center, radius, true);
     }
 
     var suggestState = { items: [], activeIndex: -1, open: false, suppressed: false };
@@ -1378,7 +1384,7 @@
         if (isStyleSwitching) return;
         await buildDataFromDOM();
         bindZoomTargets();
-        setFilterByQuery(currentQuery);
+        setFilterByQuery(currentQuery, { noSuggest: true, noZoom: true });
       }, DOM_CHANGE_DELAY_MS);
 
       var obs = new MutationObserver(debouncedRebuild);
