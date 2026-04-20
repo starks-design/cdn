@@ -1,27 +1,21 @@
 /**
- * SDA Transitions · cart-remove.js 0.1.0
+ * Starks.Design · cart-remove.js 0.2.0
  *
- * Fly-Out Animation beim Entfernen eines Cart-Items.
- * Nutzt native View Transitions API. Fallback: normale Löschung.
+ * Cart-Item verschwindet mit CSS-Animation (kein View Transitions API),
+ * damit es NICHT mit der globalen Page-Transition kollidiert.
  *
- * DOM-Konventionen (alle unterstützt):
- *   Remove-Button: [data-starks-cart="erase"]
- *                  [data-starks-cart="cart-remove"]
- *                  [data-starks="cart-remove"]
- *                  [data-starks="erase"]
- *   Item-Wrapper:  [data-starks-cart="cart-item"]
- *                  [data-starks="cart-item"]
+ * DOM-Konventionen:
+ *   Remove-Button: [data-starks-cart="erase"] (auch Aliase)
+ *   Item-Wrapper:  [data-starks-cart="cart-item"] (auch Aliase)
+ *
+ * Funktionsweise:
+ *   1. Click auf X abfangen (capture phase)
+ *   2. preventDefault + stopImmediatePropagation
+ *   3. Item fade-out via CSS class
+ *   4. Nach 400ms: StarksCart.removeFromCart() triggern
  *
  * Einbinden vor </body>:
- *   <script src="https://cdn.starks.design/sda/transitions/cart-remove.js" defer></script>
- *
- * CSS (separat oder inline):
- *   ::view-transition-old(sd-cart-removing) {
- *     animation: sd-cart-fly 0.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;
- *   }
- *   @keyframes sd-cart-fly {
- *     to { transform: translateX(120%) rotate(12deg) scale(0.85); opacity: 0; filter: blur(4px); }
- *   }
+ *   <script src="https://cdn.starks.design/starks/cart-remove.js" defer></script>
  */
 (function () {
   'use strict';
@@ -36,30 +30,49 @@
     '[data-starks-cart="cart-item"],' +
     '[data-starks="cart-item"]';
 
-  var TRANSITION_NAME = 'sd-cart-removing';
+  var ANIMATION_MS = 400;
 
-  // CSS einmalig injizieren (falls nicht via separates Stylesheet geladen)
   function injectStyles() {
     if (document.getElementById('sd-cart-remove-styles')) return;
     var s = document.createElement('style');
     s.id = 'sd-cart-remove-styles';
     s.textContent =
-      '::view-transition-old(' + TRANSITION_NAME + ') {' +
-      '  animation: sd-cart-fly 0.5s cubic-bezier(0.7, 0, 0.84, 0) forwards;' +
-      '}' +
-      '::view-transition-new(' + TRANSITION_NAME + ') { animation: none; }' +
-      '@keyframes sd-cart-fly {' +
-      '  to {' +
-      '    transform: translateX(120%) rotate(12deg) scale(0.85);' +
-      '    opacity: 0;' +
-      '    filter: blur(4px);' +
-      '  }' +
-      '}' +
-      // Nachrückende Items morphen automatisch
       ITEM_SELECTOR + ' {' +
-      '  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);' +
+      '  transition:' +
+      '    opacity ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
+      '    transform ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
+      '    filter ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
+      '    max-height ' + ANIMATION_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + (ANIMATION_MS - 100) + 'ms,' +
+      '    margin ' + ANIMATION_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + (ANIMATION_MS - 100) + 'ms,' +
+      '    padding ' + ANIMATION_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + (ANIMATION_MS - 100) + 'ms;' +
+      '}' +
+      ITEM_SELECTOR + '.sd-is-removing {' +
+      '  opacity: 0;' +
+      '  transform: translateX(120%) rotate(8deg) scale(0.9);' +
+      '  filter: blur(4px);' +
+      '  max-height: 0;' +
+      '  margin-top: 0 !important;' +
+      '  margin-bottom: 0 !important;' +
+      '  padding-top: 0 !important;' +
+      '  padding-bottom: 0 !important;' +
+      '  overflow: hidden;' +
+      '  pointer-events: none;' +
       '}';
     document.head.appendChild(s);
+  }
+
+  function triggerRemoveFallback(btn, item) {
+    var productId = item.dataset.productId || item.dataset.cartItem;
+    if (window.StarksCart && typeof window.StarksCart.removeFromCart === 'function' && productId) {
+      window.StarksCart.removeFromCart(productId);
+      return;
+    }
+    // Fallback: unseren Handler kurz abhängen, normalen Click durchlassen, dann wieder anhängen
+    document.removeEventListener('click', handleClick, true);
+    btn.click();
+    setTimeout(function () {
+      document.addEventListener('click', handleClick, true);
+    }, 50);
   }
 
   function handleClick(e) {
@@ -69,28 +82,15 @@
     var item = btn.closest(ITEM_SELECTOR);
     if (!item) return;
 
-    if (!document.startViewTransition) return; // Fallback: normale Löschung
+    e.preventDefault();
+    e.stopImmediatePropagation();
 
-    // Aktuelles Click-Event nicht blockieren — starks-cart.js soll die Logic ausführen.
-    // Wir wrappen nur die DOM-Mutation in eine View Transition.
+    if (item.classList.contains('sd-is-removing')) return;
+    item.classList.add('sd-is-removing');
 
-    item.style.viewTransitionName = TRANSITION_NAME;
-
-    // Die existing Click-Logic läuft synchron im gleichen Event-Loop weiter.
-    // Wir hijacken nicht preventDefault — stattdessen starten wir die Transition,
-    // die den DOM-Mutation-Snapshot im nächsten Frame macht.
-    var transition = document.startViewTransition(function () {
-      // Ein leerer Callback reicht — die Mutation passiert durch starks-cart.js
-      // (removeFromCart → re-render). Der Browser snapshot'd vor + nach.
-      return Promise.resolve();
-    });
-
-    // Nach Abschluss die Custom Property wieder entfernen
-    transition.finished.finally(function () {
-      if (item && item.isConnected) {
-        item.style.viewTransitionName = '';
-      }
-    });
+    setTimeout(function () {
+      triggerRemoveFallback(btn, item);
+    }, ANIMATION_MS);
   }
 
   function init() {

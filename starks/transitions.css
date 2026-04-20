@@ -1,27 +1,33 @@
 /**
- * Starks.Design · transitions.css 0.1.0
+ * Starks.Design · transitions.css 0.2.0
  *
- * Starks-spezifische Page Transitions — nutzt Brand-Farben aus dem
- * Lumos-Theme-System (--_theme---brand-95 als Stage-Background).
+ * Page Transitions für starks.design (Webflow).
  *
- * Für andere Projekte: cdn.starks.design/sda/transitions/page.css (generisch).
+ * Choreografie (1.2s gesamt, Apple-Spring-Bezier):
+ *   0ms     start
+ *   0-150ms   Alt: Zoom out (scale 1 → 0.93)
+ *   150-250ms Alt: hold 100ms
+ *   250-600ms Alt: Slide nach links weg (translateX 0 → -100%)
+ *   250ms     Neu (parallel, 3em Abstand): Slide von rechts rein
+ *   600-700ms Neu: hold 100ms
+ *   700-1200ms Neu: Zoom in (scale 0.93 → 1)
  *
- * Einbinden in <head>:
+ * Background: var(--_theme---10)
+ * Cards: border-radius 24px + soft shadow
+ *
+ * Einbinden — inline @view-transition Opt-in Pflicht:
+ *   <style>@view-transition { navigation: auto; }</style>
  *   <link rel="stylesheet" href="https://cdn.starks.design/starks/transitions.css">
- *
- * Browser: Chrome 126+ · Safari 18.2+ · Firefox 130+
  */
 
-@view-transition {
-  navigation: auto;
-}
+@view-transition { navigation: auto; }
 
-/* Bühnen-Background hinter den Snapshots (Starks-Brand 95) */
+/* Bühnen-Background hinter den Snapshots */
 ::view-transition {
-  background: var(--_theme---brand-95, #0d0b0b);
+  background: var(--_theme---10, #1a1817);
 }
 
-/* Beide Snapshots als "Karten" mit Rundung + Shadow */
+/* Snapshots als Cards mit Rundung + Schatten */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   border-radius: 24px;
@@ -32,19 +38,28 @@
 }
 
 ::view-transition-old(root) {
-  animation: sd-page-out 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: sd-page-out 0.6s cubic-bezier(0.32, 0.72, 0, 1) both;
 }
 ::view-transition-new(root) {
-  animation: sd-page-in 0.8s cubic-bezier(0.16, 1, 0.3, 1) 0.25s both;
+  animation: sd-page-in 0.95s cubic-bezier(0.32, 0.72, 0, 1) 0.25s both;
 }
 
+/* ALT: Zoom out (0-150ms), hold (150-250ms), slide left (250-600ms) */
 @keyframes sd-page-out {
-  from { opacity: 1; transform: scale(1)    translateX(0); }
-  to   { opacity: 0; transform: scale(0.85) translateX(-55%); }
+  0%   { opacity: 1; transform: scale(1)    translateX(0); }
+  25%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  42%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  100% { opacity: 0; transform: scale(0.93) translateX(calc(-100% - 3em)); }
 }
+
+/* NEU (delay 250ms, 950ms total):
+   Slide von rechts rein (0-37% = 350ms real), hold (37-47% = 100ms),
+   Zoom in (47-100% = 500ms) */
 @keyframes sd-page-in {
-  from { opacity: 0; transform: scale(0.85) translateX(55%); }
-  to   { opacity: 1; transform: scale(1)    translateX(0); }
+  0%   { opacity: 0; transform: scale(0.93) translateX(calc(100% + 3em)); }
+  37%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  47%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  100% { opacity: 1; transform: scale(1)    translateX(0); }
 }
 
 @media (prefers-reduced-motion: reduce) {
