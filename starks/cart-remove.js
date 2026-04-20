@@ -1,5 +1,5 @@
 /**
- * Starks.Design · cart-remove.js 0.3.0
+ * Starks.Design · cart-remove.js 0.3.1
  *
  * Cart-Item verschwindet mit CSS-Animation.
  * Transition NUR auf .sd-is-removing class — überschreibt nicht Webflow
@@ -25,16 +25,20 @@
     '[data-starks-cart="cart-item"],' +
     '[data-starks="cart-item"]';
 
+  // Jeder Einzel-Selector mit .sd-is-removing (CSS-Präzedenz: Komma-Liste
+  // trennt die Selectors — Suffix greift sonst nur auf den letzten).
+  var REMOVING_SELECTOR =
+    '[data-starks-cart="cart-item"].sd-is-removing,' +
+    '[data-starks="cart-item"].sd-is-removing';
+
   var ANIMATION_MS = 400;
 
   function injectStyles() {
     if (document.getElementById('sd-cart-remove-styles')) return;
     var s = document.createElement('style');
     s.id = 'sd-cart-remove-styles';
-    // WICHTIG: Transition + End-State NUR auf .sd-is-removing class.
-    // So bleiben Webflow IX2 Base-Interactions (fade-in etc.) unangetastet.
     s.textContent =
-      ITEM_SELECTOR + '.sd-is-removing {' +
+      REMOVING_SELECTOR + ' {' +
       '  transition:' +
       '    opacity ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
       '    transform ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
