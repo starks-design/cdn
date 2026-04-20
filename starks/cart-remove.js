@@ -1,18 +1,13 @@
 /**
- * Starks.Design · cart-remove.js 0.2.0
+ * Starks.Design · cart-remove.js 0.3.0
  *
- * Cart-Item verschwindet mit CSS-Animation (kein View Transitions API),
- * damit es NICHT mit der globalen Page-Transition kollidiert.
+ * Cart-Item verschwindet mit CSS-Animation.
+ * Transition NUR auf .sd-is-removing class — überschreibt nicht Webflow
+ * IX2 base-state (opacity/transform wird sonst überschrieben = Item weg).
  *
  * DOM-Konventionen:
  *   Remove-Button: [data-starks-cart="erase"] (auch Aliase)
  *   Item-Wrapper:  [data-starks-cart="cart-item"] (auch Aliase)
- *
- * Funktionsweise:
- *   1. Click auf X abfangen (capture phase)
- *   2. preventDefault + stopImmediatePropagation
- *   3. Item fade-out via CSS class
- *   4. Nach 400ms: StarksCart.removeFromCart() triggern
  *
  * Einbinden vor </body>:
  *   <script src="https://cdn.starks.design/starks/cart-remove.js" defer></script>
@@ -36,8 +31,10 @@
     if (document.getElementById('sd-cart-remove-styles')) return;
     var s = document.createElement('style');
     s.id = 'sd-cart-remove-styles';
+    // WICHTIG: Transition + End-State NUR auf .sd-is-removing class.
+    // So bleiben Webflow IX2 Base-Interactions (fade-in etc.) unangetastet.
     s.textContent =
-      ITEM_SELECTOR + ' {' +
+      ITEM_SELECTOR + '.sd-is-removing {' +
       '  transition:' +
       '    opacity ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
       '    transform ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
@@ -45,8 +42,6 @@
       '    max-height ' + ANIMATION_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + (ANIMATION_MS - 100) + 'ms,' +
       '    margin ' + ANIMATION_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + (ANIMATION_MS - 100) + 'ms,' +
       '    padding ' + ANIMATION_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + (ANIMATION_MS - 100) + 'ms;' +
-      '}' +
-      ITEM_SELECTOR + '.sd-is-removing {' +
       '  opacity: 0;' +
       '  transform: translateX(120%) rotate(8deg) scale(0.9);' +
       '  filter: blur(4px);' +
@@ -67,7 +62,6 @@
       window.StarksCart.removeFromCart(productId);
       return;
     }
-    // Fallback: unseren Handler kurz abhängen, normalen Click durchlassen, dann wieder anhängen
     document.removeEventListener('click', handleClick, true);
     btn.click();
     setTimeout(function () {

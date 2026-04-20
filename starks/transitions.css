@@ -1,16 +1,16 @@
 /**
- * Starks.Design · transitions.css 0.2.0
+ * Starks.Design · transitions.css 0.3.0
  *
- * Page Transitions für starks.design (Webflow).
+ * Page Transitions für starks.design.
  *
- * Choreografie (1.2s gesamt, Apple-Spring-Bezier):
- *   0ms     start
- *   0-150ms   Alt: Zoom out (scale 1 → 0.93)
- *   150-250ms Alt: hold 100ms
- *   250-600ms Alt: Slide nach links weg (translateX 0 → -100%)
- *   250ms     Neu (parallel, 3em Abstand): Slide von rechts rein
- *   600-700ms Neu: hold 100ms
- *   700-1200ms Neu: Zoom in (scale 0.93 → 1)
+ * Choreografie (1.5s gesamt, smooth ease-in-out / GSAP-power1-Feel):
+ *   0ms       start
+ *   0-150ms     Alt: Zoom out (scale 1 → 0.93)
+ *   150-250ms   Alt: hold 100ms
+ *   250-750ms   Alt: Slide nach links weg
+ *   250ms       Neu (parallel, 3em Abstand): Slide von rechts rein
+ *   700-800ms   Neu: hold 100ms
+ *   800-1500ms  Neu: Zoom in (scale 0.93 → 1)
  *
  * Background: var(--_theme---10)
  * Cards: border-radius 24px + soft shadow
@@ -22,12 +22,10 @@
 
 @view-transition { navigation: auto; }
 
-/* Bühnen-Background hinter den Snapshots */
 ::view-transition {
   background: var(--_theme---10, #1a1817);
 }
 
-/* Snapshots als Cards mit Rundung + Schatten */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   border-radius: 24px;
@@ -37,28 +35,33 @@
   overflow: hidden;
 }
 
+/* smooth ease-in-out — CSS-Standard, entspricht GSAP power1.inOut */
 ::view-transition-old(root) {
-  animation: sd-page-out 0.6s cubic-bezier(0.32, 0.72, 0, 1) both;
+  animation: sd-page-out 0.75s cubic-bezier(0.42, 0, 0.58, 1) both;
 }
 ::view-transition-new(root) {
-  animation: sd-page-in 0.95s cubic-bezier(0.32, 0.72, 0, 1) 0.25s both;
+  animation: sd-page-in 1.25s cubic-bezier(0.42, 0, 0.58, 1) 0.25s both;
 }
 
-/* ALT: Zoom out (0-150ms), hold (150-250ms), slide left (250-600ms) */
+/* ALT (750ms):
+   0-150ms (0-20%):  Zoom out 1 → 0.93
+   150-250ms (20-33%): hold
+   250-750ms (33-100%): Slide nach links */
 @keyframes sd-page-out {
   0%   { opacity: 1; transform: scale(1)    translateX(0); }
-  25%  { opacity: 1; transform: scale(0.93) translateX(0); }
-  42%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  20%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  33%  { opacity: 1; transform: scale(0.93) translateX(0); }
   100% { opacity: 0; transform: scale(0.93) translateX(calc(-100% - 3em)); }
 }
 
-/* NEU (delay 250ms, 950ms total):
-   Slide von rechts rein (0-37% = 350ms real), hold (37-47% = 100ms),
-   Zoom in (47-100% = 500ms) */
+/* NEU (delay 250ms, 1250ms total → endet bei 1500ms):
+   0-450ms (0-36%):   Slide von rechts rein
+   450-550ms (36-44%): hold
+   550-1250ms (44-100%): Zoom in 0.93 → 1 */
 @keyframes sd-page-in {
   0%   { opacity: 0; transform: scale(0.93) translateX(calc(100% + 3em)); }
-  37%  { opacity: 1; transform: scale(0.93) translateX(0); }
-  47%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  36%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  44%  { opacity: 1; transform: scale(0.93) translateX(0); }
   100% { opacity: 1; transform: scale(1)    translateX(0); }
 }
 
