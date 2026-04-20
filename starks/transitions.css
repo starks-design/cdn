@@ -1,23 +1,28 @@
 /**
- * Starks.Design · transitions.css 0.3.1
+ * Starks.Design · transitions.css 0.4.0
  *
- * Page Transitions für starks.design.
+ * Page Transitions für starks.design — direction-aware:
+ * Forward (Link-Klick): Alt slidet nach LINKS weg, Neu kommt von RECHTS
+ * Back (Browser-Zurück): Alt slidet nach RECHTS weg, Neu kommt von LINKS
  *
  * Choreografie (1.5s gesamt, smooth ease-in-out / GSAP-power1-Feel):
- *   0ms       start
  *   0-150ms     Alt: Zoom out (scale 1 → 0.93)
  *   150-250ms   Alt: hold 100ms
- *   250-750ms   Alt: Slide nach links weg
- *   250ms       Neu (parallel, 3em Abstand): Slide von rechts rein
+ *   250-750ms   Alt: Slide weg (Richtung je nach Navigation)
+ *   250ms       Neu (parallel, 3em Abstand): Slide von Gegenseite rein
  *   700-800ms   Neu: hold 100ms
  *   800-1500ms  Neu: Zoom in (scale 0.93 → 1)
  *
  * Background: var(--_theme---10)
  * Cards: border-radius 24px + soft shadow
  *
+ * Direction-Detection: siehe nav-direction.js (Chrome 126+ nativ).
+ * Fallback ohne JS: forward-Animation greift immer.
+ *
  * Einbinden — inline @view-transition Opt-in Pflicht:
  *   <style>@view-transition { navigation: auto; }</style>
  *   <link rel="stylesheet" href="https://cdn.starks.design/starks/transitions.css">
+ *   <script src="https://cdn.starks.design/starks/nav-direction.js"></script>
  */
 
 @view-transition { navigation: auto; }
@@ -35,31 +40,54 @@
   overflow: hidden;
 }
 
-/* smooth ease-in-out — CSS-Standard, entspricht GSAP power1.inOut */
+/* ═══════════════════════════════════════════
+   DEFAULT / FORWARD (Link-Klick)
+   Alt → links weg, Neu ← von rechts rein
+   ═══════════════════════════════════════════ */
+
 ::view-transition-old(root) {
-  animation: sd-page-out 0.75s cubic-bezier(0.42, 0, 0.58, 1) both;
+  animation: sd-page-out-forward 0.75s cubic-bezier(0.42, 0, 0.58, 1) both;
 }
 ::view-transition-new(root) {
-  animation: sd-page-in 1.25s cubic-bezier(0.42, 0, 0.58, 1) 0.25s both;
+  animation: sd-page-in-forward 1.25s cubic-bezier(0.42, 0, 0.58, 1) 0.25s both;
 }
 
-/* ALT (750ms):
-   0-150ms (0-20%):  Zoom out 1 → 0.93  (ease-in-out)
-   150-250ms (20-33%): hold (steps)
-   250-750ms (33-100%): Slide nach links (ease-in-out) */
-@keyframes sd-page-out {
+@keyframes sd-page-out-forward {
   0%   { opacity: 1; transform: scale(1)    translateX(0); animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
   20%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: steps(1, end); }
   33%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
   100% { opacity: 0; transform: scale(0.93) translateX(calc(-100% - 3em)); }
 }
 
-/* NEU (delay 250ms, 1250ms total → endet bei 1500ms):
-   0-450ms (0-36%):   Slide von rechts rein (ease-in-out)
-   450-550ms (36-44%): hold (steps)
-   550-1250ms (44-100%): Zoom in 0.93 → 1 (out-expo: schnell da, sanftes settle) */
-@keyframes sd-page-in {
+@keyframes sd-page-in-forward {
   0%   { opacity: 0; transform: scale(0.93) translateX(calc(100% + 3em)); animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  36%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: steps(1, end); }
+  44%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
+  100% { opacity: 1; transform: scale(1)    translateX(0); }
+}
+
+/* ═══════════════════════════════════════════
+   BACK (Browser-Zurück) — gespiegelt
+   Alt → rechts weg, Neu ← von links rein
+   Nur Chrome 126+ · Safari 18.2+ · Firefox (via nav-direction.js)
+   ═══════════════════════════════════════════ */
+
+:root:active-view-transition-type(back)::view-transition-old(root) {
+  animation: sd-page-out-back 0.75s cubic-bezier(0.42, 0, 0.58, 1) both;
+}
+:root:active-view-transition-type(back)::view-transition-new(root) {
+  animation: sd-page-in-back 1.25s cubic-bezier(0.42, 0, 0.58, 1) 0.25s both;
+}
+
+@keyframes sd-page-out-back {
+  0%   { opacity: 1; transform: scale(1)    translateX(0); animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  20%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: steps(1, end); }
+  33%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  100% { opacity: 0; transform: scale(0.93) translateX(calc(100% + 3em)); }
+}
+
+@keyframes sd-page-in-back {
+  0%   { opacity: 0; transform: scale(0.93) translateX(calc(-100% - 3em)); animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
   36%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: steps(1, end); }
   44%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
   100% { opacity: 1; transform: scale(1)    translateX(0); }
