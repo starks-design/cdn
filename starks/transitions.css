@@ -1,5 +1,5 @@
 /**
- * Starks.Design · transitions.css 0.3.0
+ * Starks.Design · transitions.css 0.3.1
  *
  * Page Transitions für starks.design.
  *
@@ -44,24 +44,24 @@
 }
 
 /* ALT (750ms):
-   0-150ms (0-20%):  Zoom out 1 → 0.93
-   150-250ms (20-33%): hold
-   250-750ms (33-100%): Slide nach links */
+   0-150ms (0-20%):  Zoom out 1 → 0.93  (ease-in-out)
+   150-250ms (20-33%): hold (steps)
+   250-750ms (33-100%): Slide nach links (ease-in-out) */
 @keyframes sd-page-out {
-  0%   { opacity: 1; transform: scale(1)    translateX(0); }
-  20%  { opacity: 1; transform: scale(0.93) translateX(0); }
-  33%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  0%   { opacity: 1; transform: scale(1)    translateX(0); animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  20%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: steps(1, end); }
+  33%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
   100% { opacity: 0; transform: scale(0.93) translateX(calc(-100% - 3em)); }
 }
 
 /* NEU (delay 250ms, 1250ms total → endet bei 1500ms):
-   0-450ms (0-36%):   Slide von rechts rein
-   450-550ms (36-44%): hold
-   550-1250ms (44-100%): Zoom in 0.93 → 1 */
+   0-450ms (0-36%):   Slide von rechts rein (ease-in-out)
+   450-550ms (36-44%): hold (steps)
+   550-1250ms (44-100%): Zoom in 0.93 → 1 (out-expo: schnell da, sanftes settle) */
 @keyframes sd-page-in {
-  0%   { opacity: 0; transform: scale(0.93) translateX(calc(100% + 3em)); }
-  36%  { opacity: 1; transform: scale(0.93) translateX(0); }
-  44%  { opacity: 1; transform: scale(0.93) translateX(0); }
+  0%   { opacity: 0; transform: scale(0.93) translateX(calc(100% + 3em)); animation-timing-function: cubic-bezier(0.42, 0, 0.58, 1); }
+  36%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: steps(1, end); }
+  44%  { opacity: 1; transform: scale(0.93) translateX(0); animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1); }
   100% { opacity: 1; transform: scale(1)    translateX(0); }
 }
 
