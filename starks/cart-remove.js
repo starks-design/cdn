@@ -1,5 +1,5 @@
 /**
- * Starks.Design · cart-remove.js 0.3.1
+ * Starks.Design · cart-remove.js 0.4.0
  *
  * Cart-Item verschwindet mit CSS-Animation.
  * Transition NUR auf .sd-is-removing class — überschreibt nicht Webflow
@@ -31,7 +31,13 @@
     '[data-starks-cart="cart-item"].sd-is-removing,' +
     '[data-starks="cart-item"].sd-is-removing';
 
-  var ANIMATION_MS = 400;
+  // Phase 1: Item "verpufft" (300ms): scale + opacity + leichter slide
+  // Phase 2 (startet bei 200ms): Height-Collapse (350ms), Items darunter rutschen hoch
+  // Total: ~550ms
+  var FADE_MS = 300;
+  var COLLAPSE_DELAY_MS = 200;
+  var COLLAPSE_MS = 350;
+  var TOTAL_MS = COLLAPSE_DELAY_MS + COLLAPSE_MS;
 
   function injectStyles() {
     if (document.getElementById('sd-cart-remove-styles')) return;
@@ -40,16 +46,18 @@
     s.textContent =
       REMOVING_SELECTOR + ' {' +
       '  transition:' +
-      '    opacity ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
-      '    transform ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
-      '    filter ' + ANIMATION_MS + 'ms cubic-bezier(0.7, 0, 0.84, 0),' +
-      '    max-height ' + ANIMATION_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + (ANIMATION_MS - 100) + 'ms,' +
-      '    margin ' + ANIMATION_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + (ANIMATION_MS - 100) + 'ms,' +
-      '    padding ' + ANIMATION_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + (ANIMATION_MS - 100) + 'ms;' +
+      '    opacity ' + FADE_MS + 'ms cubic-bezier(0.4, 0, 1, 1),' +
+      '    transform ' + FADE_MS + 'ms cubic-bezier(0.4, 0, 1, 1),' +
+      '    filter ' + FADE_MS + 'ms cubic-bezier(0.4, 0, 1, 1),' +
+      '    max-height ' + COLLAPSE_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + COLLAPSE_DELAY_MS + 'ms,' +
+      '    margin-top ' + COLLAPSE_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + COLLAPSE_DELAY_MS + 'ms,' +
+      '    margin-bottom ' + COLLAPSE_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + COLLAPSE_DELAY_MS + 'ms,' +
+      '    padding-top ' + COLLAPSE_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + COLLAPSE_DELAY_MS + 'ms,' +
+      '    padding-bottom ' + COLLAPSE_MS + 'ms cubic-bezier(0.16, 1, 0.3, 1) ' + COLLAPSE_DELAY_MS + 'ms;' +
       '  opacity: 0;' +
-      '  transform: translateX(120%) rotate(8deg) scale(0.9);' +
-      '  filter: blur(4px);' +
-      '  max-height: 0;' +
+      '  transform: scale(0.88) translateX(16px);' +
+      '  filter: blur(2px);' +
+      '  max-height: 0 !important;' +
       '  margin-top: 0 !important;' +
       '  margin-bottom: 0 !important;' +
       '  padding-top: 0 !important;' +
@@ -88,7 +96,7 @@
 
     setTimeout(function () {
       triggerRemoveFallback(btn, item);
-    }, ANIMATION_MS);
+    }, TOTAL_MS);
   }
 
   function init() {
