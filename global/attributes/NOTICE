@@ -1,0 +1,27 @@
+Starks.Design Attributes (SDA)
+Copyright 2026 Viktor Stark / Starks.Design
+
+This product is a derivative work based on:
+
+  Finsweet Attributes
+  Copyright Finsweet Inc.
+  Licensed under the Apache License, Version 2.0
+  https://github.com/finsweet/attributes
+
+Modifications made by Starks.Design:
+
+  - Namespace: HTML attribute prefix `fs-` renamed to `data-sd-`
+  - Global: `window.FinsweetAttributes` renamed to `window.SDA`
+  - Type identifiers: `FinsweetAttribute*` renamed to `SDA*` / `SDAttributeKey`
+  - Package names: `@finsweet/attributes-*` renamed to `@starks-design/sda-*`
+  - Scope: reduced to `list` and `utils` packages (other modules removed)
+  - Branding: documentation, README, metadata adjusted for Starks.Design
+  - Auto-rebrand script: `scripts/rebrand.py` documents all transformations
+
+Original architecture, filter algorithms, reactivity model, and API conventions
+are entirely the work of the Finsweet team and remain under their copyright.
+This fork only repackages and rebrands for use within Starks.Design and its
+client projects.
+
+All changes to the source code are distributed under the same Apache 2.0
+License as the original work. See LICENSE for full terms.
