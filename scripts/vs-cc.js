@@ -433,16 +433,7 @@
       this.checkboxes.forEach((cb, cat) => {
         const val = !!this.store.consents[cat];
         if (cb.checked !== val) {
-          // Direct property + event dispatch (cb.click() is unreliable on
-          // Webflow's hidden-input/custom-visual checkbox pattern in Chrome)
-          cb.checked = val;
-          cb.dispatchEvent(new Event("change", { bubbles: true }));
-          // Sync Webflow's visual state on the .w-checkbox-input sibling
-          const wrapper = cb.closest(".w-checkbox");
-          if (wrapper) {
-            const visual = wrapper.querySelector(".w-checkbox-input");
-            if (visual) visual.classList.toggle("w--redirected-checked", val);
-          }
+          cb.click();
         }
       });
     }
