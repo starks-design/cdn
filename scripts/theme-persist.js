@@ -1,5 +1,5 @@
 /**
- * Theme Persist 1.4.0-starks
+ * Theme Persist 1.4.1-starks
  * Speichert Dark/Light Mode in localStorage.
  * Beim ersten Besuch: System-Preference (prefers-color-scheme).
  * Bei Folgebesuchen: gespeicherter Zustand.
@@ -8,6 +8,8 @@
  * CDN: https://starks-design.github.io/cdn/scripts/theme-persist.js
  *
  * Changelog:
+ *   v1.4.1 (2026-06-24): Ziel-Theme nach Webflow-IX-Klickhandlern erneut
+ *     erzwingen, damit IX3 den State nicht zurueckdreht.
  *   v1.4.0 (2026-06-24): Theme-Klassen direkt setzen, wenn IX keinen
  *     data-theme-status schreibt.
  *   v1.3.0 (2026-03-31): System-Preference bei Erstbesuch.
@@ -41,6 +43,12 @@
     if (body) body.setAttribute("data-theme-status", dark ? "dark" : "light");
     localStorage.setItem(KEY, dark ? "true" : "false");
     updateButtons(dark);
+  }
+
+  function applyThemeAfterIx(dark) {
+    applyTheme(dark);
+    setTimeout(function () { applyTheme(dark); }, 50);
+    setTimeout(function () { applyTheme(dark); }, 350);
   }
 
   function readCurrentDark() {
@@ -81,7 +89,7 @@
 
       // Endzustand erzwingen, falls IX zwar Animationen ausfuehrt, aber keine
       // Theme-Klassen/data-theme-status schreibt.
-      applyTheme(wantDark);
+      applyThemeAfterIx(wantDark);
     }, 400);
   });
 
@@ -95,16 +103,16 @@
 
     // Wenn Button einen expliziten Wert hat (light/dark), direkt speichern
     if (btnValue === "dark") {
-      applyTheme(true);
+      applyThemeAfterIx(true);
       return;
     }
     if (btnValue === "light") {
-      applyTheme(false);
+      applyThemeAfterIx(false);
       return;
     }
 
     // Generischer Toggle: selbst umschalten. IX darf weiter Animationen spielen,
     // aber der funktionale Zustand haengt nicht mehr davon ab.
-    applyTheme(!readCurrentDark());
+    applyThemeAfterIx(!readCurrentDark());
   }, true);
 })();
