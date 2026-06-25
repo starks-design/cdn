@@ -397,11 +397,26 @@
       }
 
       // Accessibility
-      for (const sel of Object.values(SEL)) {
+      const A11Y_LABELS = {
+        allow:     "Alle Cookies akzeptieren",
+        deny:      "Alle Cookies ablehnen",
+        submit:    "Auswahl speichern",
+        openPrefs: "Cookie-Einstellungen öffnen",
+        close:     "Schließen",
+      };
+      for (const [key, sel] of Object.entries(SEL)) {
         const btn = this.element.querySelector(sel);
         if (btn) {
           btn.setAttribute("role", "button");
           btn.setAttribute("tabindex", "0");
+          // Accessible name sicherstellen (axe: "ARIA commands must have an accessible name").
+          // Nur setzen wenn weder sichtbarer Text noch aria-label existiert.
+          // Sprach-Override pro Element via [vs-cc-label="…"], sonst DE-Default.
+          const hasName = (btn.getAttribute("aria-label") || "").trim() || btn.textContent.trim();
+          if (!hasName) {
+            const label = btn.getAttribute(`${PREFIX}-label`) || A11Y_LABELS[key];
+            if (label) btn.setAttribute("aria-label", label);
+          }
         }
       }
 
