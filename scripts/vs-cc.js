@@ -9,7 +9,7 @@
  * Usage: Add <script src="vs-cc.js" vs-cc-mode="opt-in" vs-cc-consentmode="true"></script>
  *        to your site. All UI is controlled via vs-cc attributes in HTML.
  *
- * @version 1.0.0
+ * @version 1.0.1
  * @license MIT
  */
 "use strict";
@@ -134,11 +134,10 @@
   // ─── Google Consent Mode v2 ───────────────────────────────────────
   function gtagConsent(command, params) {
     window.dataLayer = window.dataLayer || [];
-    window.dataLayer.push(["consent", command, params]);
-    // Also push via gtag function if available
-    if (typeof window.gtag === "function") {
-      window.gtag("consent", command, params);
-    }
+    // gtag.js only reads Arguments objects, not plain arrays — define the standard
+    // stub when no tag has loaded yet, so the consent state reaches Google at all.
+    window.gtag = window.gtag || function () { window.dataLayer.push(arguments); };
+    window.gtag("consent", command, params);
     debug.log(`Consent Mode ${command}: ${JSON.stringify(params)}`);
   }
 
